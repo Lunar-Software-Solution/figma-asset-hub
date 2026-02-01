@@ -164,6 +164,7 @@ export type Database = {
       assets: {
         Row: {
           asset_type: Database["public"]["Enums"]["asset_type"]
+          brand_id: string | null
           created_at: string
           created_by: string
           current_version: number
@@ -182,6 +183,7 @@ export type Database = {
         }
         Insert: {
           asset_type?: Database["public"]["Enums"]["asset_type"]
+          brand_id?: string | null
           created_at?: string
           created_by: string
           current_version?: number
@@ -200,6 +202,7 @@ export type Database = {
         }
         Update: {
           asset_type?: Database["public"]["Enums"]["asset_type"]
+          brand_id?: string | null
           created_at?: string
           created_by?: string
           current_version?: number
@@ -218,6 +221,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "assets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "assets_folder_id_fkey"
             columns: ["folder_id"]
             isOneToOne: false
@@ -226,6 +236,63 @@ export type Database = {
           },
           {
             foreignKeyName: "assets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brands: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          parent_id: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          parent_id?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          parent_id?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brands_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brands_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -268,6 +335,7 @@ export type Database = {
       }
       collections: {
         Row: {
+          brand_id: string | null
           cover_image_url: string | null
           created_at: string
           created_by: string
@@ -279,6 +347,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand_id?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by: string
@@ -290,6 +359,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand_id?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string
@@ -301,6 +371,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "collections_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "collections_team_id_fkey"
             columns: ["team_id"]
@@ -401,6 +478,7 @@ export type Database = {
       }
       folders: {
         Row: {
+          brand_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -411,6 +489,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -421,6 +500,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -431,6 +511,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "folders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "folders_parent_id_fkey"
             columns: ["parent_id"]
