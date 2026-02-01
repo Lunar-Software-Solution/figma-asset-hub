@@ -5,13 +5,16 @@ import { useAuth } from "./AuthContext";
 export interface Brand {
   id: string;
   team_id: string;
+  business_id: string | null;
   parent_id: string | null;
   name: string;
   description: string | null;
   logo_url: string | null;
-  primary_color: string;
+  primary_color: string | null;
   secondary_color: string | null;
   created_at: string;
+  updated_at: string;
+  created_by: string;
 }
 
 interface BrandContextType {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
@@ -28,22 +29,30 @@ export interface CanvasItem {
 
 export interface BusinessCanvas {
   id: string;
-  brand_id: string;
+  brand_id: string | null;
+  business_id: string | null;
   team_id: string;
   created_by: string;
   created_at: string;
   updated_at: string;
 }
 
-export function useBusinessCanvas() {
+export type CanvasLevel = "business" | "brand";
+
+export function useBusinessCanvas(level: CanvasLevel = "brand") {
   const { currentBrand } = useBrand();
+  const { currentBusiness } = useBusiness();
   const { user } = useAuth();
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchCanvas = useCallback(async () => {
-    if (!currentBrand || !user) {
+    // Determine which entity to fetch canvas for
+    const targetId = level === "business" ? currentBusiness?.id : currentBrand?.id;
+    const targetTeamId = level === "business" ? currentBusiness?.team_id : currentBrand?.team_id;
+    
+    if (!targetId || !user) {
       setCanvas(null);
       setItems([]);
       setIsLoading(false);
@@ -52,12 +61,18 @@ export function useBusinessCanvas() {
 
     setIsLoading(true);
     try {
-      // Fetch canvas for current brand
-      const { data: canvasData, error: canvasError } = await supabase
+      // Build query based on level
+      let query = supabase
         .from("business_canvases")
-        .select("*")
-        .eq("brand_id", currentBrand.id)
-        .maybeSingle();
+        .select("*");
+      
+      if (level === "business") {
+        query = query.eq("business_id", targetId);
+      } else {
+        query = query.eq("brand_id", targetId);
+      }
+      
+      const { data: canvasData, error: canvasError } = await query.maybeSingle();
 
       if (canvasError) throw canvasError;
 
@@ -87,23 +102,34 @@ export function useBusinessCanvas() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentBrand, user]);
+  }, [currentBrand, currentBusiness, user, level]);
 
   useEffect(() => {
     fetchCanvas();
   }, [fetchCanvas]);
 
   const createCanvas = async () => {
-    if (!currentBrand || !user) return null;
+    const targetId = level === "business" ? currentBusiness?.id : currentBrand?.id;
+    const targetTeamId = level === "business" ? currentBusiness?.team_id : currentBrand?.team_id;
+    
+    if (!targetId || !targetTeamId || !user) return null;
 
     try {
+      const insertData = level === "business" 
+        ? {
+            team_id: targetTeamId,
+            created_by: user.id,
+            business_id: targetId,
+          }
+        : {
+            team_id: targetTeamId,
+            created_by: user.id,
+            brand_id: targetId,
+          };
+      
       const { data, error } = await supabase
         .from("business_canvases")
-        .insert({
-          brand_id: currentBrand.id,
-          team_id: currentBrand.team_id,
-          created_by: user.id,
-        })
+        .insert(insertData)
         .select()
         .single();
 
