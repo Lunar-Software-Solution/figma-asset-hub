@@ -1,158 +1,159 @@
 
 
-# Business Canvas Maker Implementation Plan
+# Reorganizing Data for Multi-Business, Multi-Brand Structure
 
-## What is a Business Model Canvas?
+## Current Situation
 
-The Business Model Canvas (BMC) is a strategic management tool created by Alexander Osterwalder. It's a visual template with 9 building blocks that helps businesses plan and document their business model on a single page.
+Your data currently uses a single `brands` table with a `parent_id` to create a two-level hierarchy (Brand → Sub-brand). This works for simple setups but becomes limiting when you have:
 
-### The 9 Building Blocks
+- Multiple distinct businesses (e.g., different companies or divisions)
+- Each business having its own set of brands
+- Each brand potentially having sub-brands
 
-| Block | Description |
-|-------|-------------|
-| **Key Partners** | Strategic alliances, suppliers, and partners |
-| **Key Activities** | Most important actions to execute value proposition |
-| **Key Resources** | Assets needed to create value (human, financial, physical, intellectual) |
-| **Value Propositions** | Products/services that create value for customers |
-| **Customer Relationships** | How you interact with customer segments |
-| **Channels** | How you deliver value to customers |
-| **Customer Segments** | Who you're creating value for |
-| **Cost Structure** | All costs to operate the business model |
-| **Revenue Streams** | How the business earns income |
-
-### Canvas Layout
-
-The canvas uses a specific visual layout:
+## Proposed Hierarchy
 
 ```text
-+------------------+------------------+------------------+------------------+------------------+
-|                  |                  |                  |                  |                  |
-|  Key Partners    |  Key Activities  |                  | Customer         | Customer         |
-|                  |                  |  Value           | Relationships    | Segments         |
-|                  +------------------+  Propositions    +------------------+                  |
-|                  |                  |                  |                  |                  |
-|                  |  Key Resources   |                  | Channels         |                  |
-|                  |                  |                  |                  |                  |
-+------------------+------------------+------------------+------------------+------------------+
-|                                                        |                                     |
-|                    Cost Structure                      |           Revenue Streams           |
-|                                                        |                                     |
-+--------------------------------------------------------+-------------------------------------+
+Business (Company/Division)
+    └── Brand
+            └── Sub-brand
+                    └── Canvas items
+```
+
+| Level | Example | Purpose |
+|-------|---------|---------|
+| **Business** | Holding Corp, Division A | Top-level organizational unit |
+| **Brand** | Consumer Brand, Enterprise Brand | Main brand identity |
+| **Sub-brand** | Premium Line, Budget Line | Product variations |
+
+---
+
+## Option A: Add Explicit "Business" Entity (Recommended)
+
+Create a new `businesses` table as the top-level container, then link brands to businesses.
+
+### New Structure
+
+```text
+businesses
+├── id, team_id, name, description, logo_url
+└── (One per company/division)
+
+brands
+├── business_id (NEW - links to businesses)
+├── parent_id (for sub-brands within same business)
+└── (Existing fields)
+
+business_canvases
+├── business_id (NEW - optional, for business-level canvas)
+├── brand_id (for brand-specific canvas)
+└── (Both levels can have their own canvas)
+```
+
+### Benefits
+
+- Clear separation between organizational units and brand identities
+- Business-level canvas for company-wide strategy
+- Brand-level canvas for brand-specific planning
+- Better organization in the UI with grouped navigation
+
+### UI Changes
+
+The Brand Switcher would become a hierarchical picker:
+
+```text
+📁 Business: Holding Corp
+    ├── 🏷️ Consumer Brand
+    │       └── Premium Line
+    │       └── Budget Line
+    └── 🏷️ Enterprise Brand
+
+📁 Business: Other Company
+    └── 🏷️ Their Brand
 ```
 
 ---
 
-## How This Fits DesignVault
+## Option B: Enhanced Current Structure (Simpler)
 
-Since DesignVault already has a **Brand Management** system with hierarchical brand/sub-brand organization, the Business Canvas Maker becomes a powerful strategic planning tool for each brand:
+Keep the current brands table but add a `level` or `type` field to distinguish businesses from brands.
 
-- Each **brand** can have its own Business Model Canvas
-- Teams can visually document and iterate on brand strategy
-- Canvas data is stored per-brand and filtered by the existing BrandContext
-- Collaborative editing with sticky-note style items
+### Changes
 
----
+```text
+brands (modified)
+├── type: 'business' | 'brand' | 'sub_brand' (NEW)
+├── parent_id (existing - now used for full hierarchy)
+└── (Existing fields)
+```
 
-## Implementation Overview
+### Benefits
 
-### New Page: Business Canvas
+- No new tables needed
+- Minimal database changes
+- Same RLS policies apply
 
-A dedicated page at `/canvas` that provides:
+### Limitations
 
-1. **Interactive Canvas Grid** - The 9-block layout with drag-and-drop capability
-2. **Sticky Note Items** - Add, edit, and delete items within each block
-3. **Brand-Scoped** - Each canvas is tied to the currently selected brand
-4. **Color-Coded Blocks** - Visual distinction between different sections
-5. **Export/Print** - Generate PDF or image of the canvas
-
----
-
-## What You'll Get
-
-### Visual Design
-
-- Clean, minimal aesthetic matching DesignVault's Linear/Notion-inspired style
-- Responsive grid layout adapting to screen sizes
-- Drag-and-drop sticky notes with smooth animations
-- Color-coded sections for easy visual scanning
-- Hover states and quick actions for editing
-
-### Features
-
-- **Create/Edit Canvas** - One canvas per brand
-- **Add Items** - Click to add sticky notes to any block
-- **Inline Editing** - Click to edit text directly
-- **Color Options** - Choose note colors (yellow, pink, blue, green)
-- **Delete Items** - Remove notes with confirmation
-- **Auto-Save** - Changes saved automatically
-- **Empty States** - Helpful prompts for new canvases
+- Less semantic clarity
+- All entities share the same table structure
+- Cannot have different fields for businesses vs brands
 
 ---
 
-## Technical Details
+## Recommendation
+
+**Option A (Add Business Entity)** is recommended because:
+
+1. **Cleaner Data Model** - Each level has its own purpose and can have unique fields
+2. **Flexible Canvas Strategy** - Business can have an overall canvas, brands have their own
+3. **Better Filtering** - Easily filter by business first, then by brand
+4. **Scalable** - Adding more business-level features is straightforward
+
+---
+
+## Implementation Summary
 
 ### Database Changes
 
-A new `business_canvases` table to store canvas data:
+1. Create `businesses` table with team association
+2. Add `business_id` column to `brands` table
+3. Add optional `business_id` to `business_canvases`
+4. Migrate existing top-level brands to businesses (or create default business)
+5. Set up RLS policies for the new table
 
-```text
-business_canvases
-- id (uuid, primary key)
-- brand_id (uuid, references brands)
-- team_id (uuid, references teams)
-- created_by (uuid)
-- created_at, updated_at (timestamps)
+### UI Changes
 
-business_canvas_items
-- id (uuid, primary key)
-- canvas_id (uuid, references business_canvases)
-- block_type (enum: key_partners, key_activities, etc.)
-- content (text)
-- color (text)
-- position (integer for ordering)
-- created_at, updated_at (timestamps)
-```
-
-### New Components
-
-| Component | Purpose |
-|-----------|---------|
-| `BusinessCanvas.tsx` | Main canvas page component |
-| `CanvasBlock.tsx` | Individual block container (9 total) |
-| `CanvasItem.tsx` | Sticky note component with edit/delete |
-| `AddItemDialog.tsx` | Modal for adding new items |
+1. Update Brand Switcher to show Business → Brand → Sub-brand hierarchy
+2. Add Business Canvas view for company-wide strategy
+3. Keep Brand Canvas for brand-specific planning
+4. Add "Create Business" dialog
+5. Update navigation to show current business context
 
 ### Files to Create
 
-1. `src/pages/BusinessCanvas.tsx` - Main page
-2. `src/components/canvas/CanvasBlock.tsx` - Block container
-3. `src/components/canvas/CanvasItem.tsx` - Sticky note
-4. `src/components/canvas/AddCanvasItemDialog.tsx` - Add item modal
-5. `src/hooks/useBusinessCanvas.ts` - Data fetching hook
+| File | Purpose |
+|------|---------|
+| `src/contexts/BusinessContext.tsx` | Manage current business selection |
+| `src/components/business/BusinessSwitcher.tsx` | Top-level business picker |
+| `src/pages/BusinessOverview.tsx` | Business-level dashboard |
 
 ### Files to Modify
 
-1. `src/App.tsx` - Add new route `/canvas`
-2. `src/components/layout/AppSidebar.tsx` - Add Canvas link to navigation
-
-### Navigation Update
-
-Add "Business Canvas" to the sidebar navigation between "Figma Hub" and "Team":
-
-```text
-Dashboard
-Asset Library
-Collections
-Figma Hub
-Business Canvas  <-- NEW
-Team
-Analytics
-Settings
-```
+| File | Changes |
+|------|---------|
+| `src/contexts/BrandContext.tsx` | Filter brands by current business |
+| `src/components/brand/BrandSwitcher.tsx` | Show brands under current business |
+| `src/hooks/useBusinessCanvas.ts` | Support business-level canvas |
+| `src/pages/BusinessCanvas.tsx` | Option to view business or brand canvas |
 
 ---
 
 ## Summary
 
-This implementation adds a full-featured Business Model Canvas tool to DesignVault, allowing teams to strategically plan each brand using the industry-standard 9-block framework. The design follows the existing clean aesthetic while adding interactive sticky-note functionality for collaborative planning.
+This restructuring adds a "Business" layer above brands, giving you:
+
+- Clear organizational hierarchy (Business → Brand → Sub-brand)
+- Separate strategic planning at business and brand levels
+- Better navigation for multi-business scenarios
+- A foundation for business-level features (team permissions per business, business analytics, etc.)
 
