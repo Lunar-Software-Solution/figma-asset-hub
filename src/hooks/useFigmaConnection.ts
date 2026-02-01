@@ -67,33 +67,30 @@ export function useFigmaConnection(teamId: string | null) {
     }
   }, [fetchConnection]);
 
-  const connect = async () => {
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const connect = async (token: string) => {
     if (!teamId || !user) {
       toast.error("You must be logged in and have a team selected");
       return;
     }
 
+    setIsConnecting(true);
     try {
-      const state = btoa(JSON.stringify({
-        team_id: teamId,
-        user_id: user.id,
-        redirect_url: window.location.origin + "/figma-hub",
-      }));
-
-      const { data, error } = await supabase.functions.invoke("figma-auth", {
-        body: {
-          redirectUri: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/figma-callback`,
-          state,
-        },
+      const { data, error } = await supabase.functions.invoke("figma-connect", {
+        body: { teamId, token },
       });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-      // Redirect to Figma OAuth
-      window.location.href = data.authUrl;
+      toast.success("Figma connected successfully!");
+      fetchConnection();
     } catch (error: any) {
-      console.error("Error initiating Figma auth:", error);
+      console.error("Error connecting Figma:", error);
       toast.error(error.message || "Failed to connect to Figma");
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -146,6 +143,7 @@ export function useFigmaConnection(teamId: string | null) {
     files,
     isLoading,
     isLoadingFiles,
+    isConnecting,
     connect,
     disconnect,
     refreshFiles: fetchFiles,

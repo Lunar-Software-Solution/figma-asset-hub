@@ -48,10 +48,10 @@ serve(async (req) => {
       throw new Error('Figma not connected for this team');
     }
 
-    // Fetch recent files from Figma
+    // Fetch recent files from Figma using Personal Access Token
     const filesResponse = await fetch('https://api.figma.com/v1/me/files?page_size=20', {
       headers: {
-        'Authorization': `Bearer ${connection.access_token}`,
+        'X-Figma-Token': connection.access_token,
       },
     });
 
