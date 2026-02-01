@@ -181,12 +181,15 @@ export function CreateBrandDialog({
           {!parentBrandId && parentBrands.length > 0 && (
             <div className="space-y-2">
               <Label>Parent Brand (optional)</Label>
-              <Select value={parentId} onValueChange={setParentId}>
+              <Select 
+                value={parentId || "__none__"} 
+                onValueChange={(val) => setParentId(val === "__none__" ? undefined : val)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="None (top-level brand)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (top-level brand)</SelectItem>
+                  <SelectItem value="__none__">None (top-level brand)</SelectItem>
                   {parentBrands.map((brand) => (
                     <SelectItem key={brand.id} value={brand.id}>
                       {brand.name}
