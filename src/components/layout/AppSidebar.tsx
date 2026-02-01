@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Plus,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -19,6 +20,7 @@ import { BusinessSwitcher } from "@/components/business/BusinessSwitcher";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Building2, label: "Business Overview", path: "/business" },
   { icon: Images, label: "Asset Library", path: "/assets" },
   { icon: FolderOpen, label: "Collections", path: "/collections" },
   { icon: Figma, label: "Figma Hub", path: "/figma" },
