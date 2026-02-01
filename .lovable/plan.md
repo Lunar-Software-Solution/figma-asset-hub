@@ -1,84 +1,158 @@
 
 
-# DesignVault - Digital Asset Management System
+# Business Canvas Maker Implementation Plan
 
-A comprehensive DAM platform for design teams with deep Figma integration, built with a clean, minimal aesthetic inspired by Linear and Notion.
+## What is a Business Model Canvas?
 
----
+The Business Model Canvas (BMC) is a strategic management tool created by Alexander Osterwalder. It's a visual template with 9 building blocks that helps businesses plan and document their business model on a single page.
 
-## Core Features
+### The 9 Building Blocks
 
-### 1. Asset Library
-- **Upload & organize assets** - Drag-and-drop upload for images, icons, vectors, and design files
-- **Folder structure** - Create nested folders to organize assets by project, brand, or type
-- **Tagging system** - Add tags to assets for easy categorization
-- **Smart filtering** - Filter by file type, tags, date, uploader, or project
-- **Full-text search** - Search across file names, descriptions, and tags
-- **Grid/List views** - Toggle between visual gallery and detailed list view
+| Block | Description |
+|-------|-------------|
+| **Key Partners** | Strategic alliances, suppliers, and partners |
+| **Key Activities** | Most important actions to execute value proposition |
+| **Key Resources** | Assets needed to create value (human, financial, physical, intellectual) |
+| **Value Propositions** | Products/services that create value for customers |
+| **Customer Relationships** | How you interact with customer segments |
+| **Channels** | How you deliver value to customers |
+| **Customer Segments** | Who you're creating value for |
+| **Cost Structure** | All costs to operate the business model |
+| **Revenue Streams** | How the business earns income |
 
-### 2. Figma Integration
-- **Connect Figma account** - OAuth connection to your Figma workspace
-- **Import from Figma** - Pull components, frames, and images directly from Figma files
-- **Push to Figma** - Send approved assets to your Figma design library
-- **Library sync** - Keep your DAM and Figma component library in sync
-- **Live previews** - View Figma file thumbnails and frame previews within the DAM
-- **Figma file browser** - Browse your Figma projects and select assets to import
+### Canvas Layout
 
-### 3. Version Control
-- **Automatic versioning** - Every upload creates a new version
-- **Version history** - View the complete history of changes for each asset
-- **Visual comparison** - Side-by-side comparison between versions
-- **Rollback** - Restore any previous version with one click
-- **Version notes** - Add descriptions to explain what changed
+The canvas uses a specific visual layout:
 
-### 4. Team Collaboration
-- **User authentication** - Email/password login with team invites
-- **Role-based access** - Viewer (view/download), Editor (upload/edit), Admin (full control)
-- **Comments** - Leave feedback directly on assets
-- **Approval workflow** - Submit assets for review before publishing
-- **Share links** - Generate public or password-protected share links
-- **Activity feed** - See who uploaded, edited, or commented on assets
-
-### 5. Analytics Dashboard
-- **Usage metrics** - Track downloads, views, and shares per asset
-- **Popular assets** - See which assets are used most frequently
-- **Team activity** - View team member contributions and activity
-- **Storage overview** - Monitor storage usage and file counts
-- **Export reports** - Download analytics as CSV
+```text
++------------------+------------------+------------------+------------------+------------------+
+|                  |                  |                  |                  |                  |
+|  Key Partners    |  Key Activities  |                  | Customer         | Customer         |
+|                  |                  |  Value           | Relationships    | Segments         |
+|                  +------------------+  Propositions    +------------------+                  |
+|                  |                  |                  |                  |                  |
+|                  |  Key Resources   |                  | Channels         |                  |
+|                  |                  |                  |                  |                  |
++------------------+------------------+------------------+------------------+------------------+
+|                                                        |                                     |
+|                    Cost Structure                      |           Revenue Streams           |
+|                                                        |                                     |
++--------------------------------------------------------+-------------------------------------+
+```
 
 ---
 
-## User Experience
+## How This Fits DesignVault
 
-### Pages & Navigation
-1. **Dashboard** - Overview with recent activity, popular assets, and quick actions
-2. **Asset Library** - Main browse/search interface with filters and views
-3. **Asset Detail** - Full preview, metadata, versions, and comments
-4. **Figma Hub** - Connect Figma, browse files, import/push assets
-5. **Collections** - Create and manage curated asset collections
-6. **Team** - Manage team members, roles, and invitations
-7. **Analytics** - Usage statistics and insights
-8. **Settings** - Profile, integrations, and preferences
+Since DesignVault already has a **Brand Management** system with hierarchical brand/sub-brand organization, the Business Canvas Maker becomes a powerful strategic planning tool for each brand:
 
-### Design Principles
-- **Clean & minimal** - Ample whitespace, subtle borders, light color palette
-- **Visual-first** - Large thumbnails and previews for easy scanning
-- **Quick actions** - Hover states reveal common actions (download, share, delete)
-- **Responsive** - Works on desktop and tablet devices
+- Each **brand** can have its own Business Model Canvas
+- Teams can visually document and iterate on brand strategy
+- Canvas data is stored per-brand and filtered by the existing BrandContext
+- Collaborative editing with sticky-note style items
 
 ---
 
-## Technical Requirements
+## Implementation Overview
 
-### Backend (Lovable Cloud)
-- **Database** - Store assets metadata, users, teams, comments, versions
-- **Storage** - Secure file storage for all uploaded assets
-- **Authentication** - User accounts with email login and team invites
-- **Edge Functions** - Handle Figma API integration and file processing
+### New Page: Business Canvas
 
-### Figma API Integration
-- OAuth authentication with Figma
-- Fetch files, projects, and components
-- Export images and frames
-- Webhook for sync notifications
+A dedicated page at `/canvas` that provides:
+
+1. **Interactive Canvas Grid** - The 9-block layout with drag-and-drop capability
+2. **Sticky Note Items** - Add, edit, and delete items within each block
+3. **Brand-Scoped** - Each canvas is tied to the currently selected brand
+4. **Color-Coded Blocks** - Visual distinction between different sections
+5. **Export/Print** - Generate PDF or image of the canvas
+
+---
+
+## What You'll Get
+
+### Visual Design
+
+- Clean, minimal aesthetic matching DesignVault's Linear/Notion-inspired style
+- Responsive grid layout adapting to screen sizes
+- Drag-and-drop sticky notes with smooth animations
+- Color-coded sections for easy visual scanning
+- Hover states and quick actions for editing
+
+### Features
+
+- **Create/Edit Canvas** - One canvas per brand
+- **Add Items** - Click to add sticky notes to any block
+- **Inline Editing** - Click to edit text directly
+- **Color Options** - Choose note colors (yellow, pink, blue, green)
+- **Delete Items** - Remove notes with confirmation
+- **Auto-Save** - Changes saved automatically
+- **Empty States** - Helpful prompts for new canvases
+
+---
+
+## Technical Details
+
+### Database Changes
+
+A new `business_canvases` table to store canvas data:
+
+```text
+business_canvases
+- id (uuid, primary key)
+- brand_id (uuid, references brands)
+- team_id (uuid, references teams)
+- created_by (uuid)
+- created_at, updated_at (timestamps)
+
+business_canvas_items
+- id (uuid, primary key)
+- canvas_id (uuid, references business_canvases)
+- block_type (enum: key_partners, key_activities, etc.)
+- content (text)
+- color (text)
+- position (integer for ordering)
+- created_at, updated_at (timestamps)
+```
+
+### New Components
+
+| Component | Purpose |
+|-----------|---------|
+| `BusinessCanvas.tsx` | Main canvas page component |
+| `CanvasBlock.tsx` | Individual block container (9 total) |
+| `CanvasItem.tsx` | Sticky note component with edit/delete |
+| `AddItemDialog.tsx` | Modal for adding new items |
+
+### Files to Create
+
+1. `src/pages/BusinessCanvas.tsx` - Main page
+2. `src/components/canvas/CanvasBlock.tsx` - Block container
+3. `src/components/canvas/CanvasItem.tsx` - Sticky note
+4. `src/components/canvas/AddCanvasItemDialog.tsx` - Add item modal
+5. `src/hooks/useBusinessCanvas.ts` - Data fetching hook
+
+### Files to Modify
+
+1. `src/App.tsx` - Add new route `/canvas`
+2. `src/components/layout/AppSidebar.tsx` - Add Canvas link to navigation
+
+### Navigation Update
+
+Add "Business Canvas" to the sidebar navigation between "Figma Hub" and "Team":
+
+```text
+Dashboard
+Asset Library
+Collections
+Figma Hub
+Business Canvas  <-- NEW
+Team
+Analytics
+Settings
+```
+
+---
+
+## Summary
+
+This implementation adds a full-featured Business Model Canvas tool to DesignVault, allowing teams to strategically plan each brand using the industry-standard 9-block framework. The design follows the existing clean aesthetic while adding interactive sticky-note functionality for collaborative planning.
 
