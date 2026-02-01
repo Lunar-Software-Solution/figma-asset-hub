@@ -12,16 +12,19 @@ import {
   Plus,
   ArrowRight,
   Palette,
-  FolderTree
+  FolderTree,
+  Link2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { CreateBrandDialog } from "@/components/brand/CreateBrandDialog";
+import { AssignBrandsDialog } from "@/components/business/AssignBrandsDialog";
 
 export default function BusinessOverview() {
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { brands, setCurrentBrand, isLoading: brandLoading } = useBrand();
   const [showCreateBrandDialog, setShowCreateBrandDialog] = useState(false);
+  const [showAssignBrandsDialog, setShowAssignBrandsDialog] = useState(false);
 
   const isLoading = businessLoading || brandLoading;
 
@@ -89,10 +92,16 @@ export default function BusinessOverview() {
               )}
             </div>
           </div>
-          <Button onClick={() => setShowCreateBrandDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Brand
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowAssignBrandsDialog(true)}>
+              <Link2 className="h-4 w-4 mr-2" />
+              Assign Existing
+            </Button>
+            <Button onClick={() => setShowCreateBrandDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Brand
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -294,6 +303,10 @@ export default function BusinessOverview() {
       <CreateBrandDialog
         open={showCreateBrandDialog}
         onOpenChange={setShowCreateBrandDialog}
+      />
+      <AssignBrandsDialog
+        open={showAssignBrandsDialog}
+        onOpenChange={setShowAssignBrandsDialog}
       />
     </AppLayout>
   );
