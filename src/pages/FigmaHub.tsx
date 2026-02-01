@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,17 +21,20 @@ import { useFigmaConnection } from "@/hooks/useFigmaConnection";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
+import { FigmaConnectDialog } from "@/components/figma/FigmaConnectDialog";
 
 export default function FigmaHub() {
   const { user } = useAuth();
   const { currentBrand } = useBrand();
   const teamId = currentBrand?.team_id || null;
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   
   const {
     connection,
     files,
     isLoading,
     isLoadingFiles,
+    isConnecting,
     connect,
     disconnect,
     refreshFiles,
@@ -79,7 +83,7 @@ export default function FigmaHub() {
               <Button
                 size="lg"
                 className="w-full gap-2"
-                onClick={connect}
+                onClick={() => setConnectDialogOpen(true)}
                 disabled={!teamId}
               >
                 <Figma className="h-4 w-4" />
@@ -91,9 +95,19 @@ export default function FigmaHub() {
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                We'll request read access to your Figma files
+                You'll need a Figma Personal Access Token
               </p>
             </div>
+            
+            <FigmaConnectDialog
+              open={connectDialogOpen}
+              onOpenChange={setConnectDialogOpen}
+              onConnect={async (token) => {
+                await connect(token);
+                setConnectDialogOpen(false);
+              }}
+              isConnecting={isConnecting}
+            />
 
             {/* Features Preview */}
             <div className="mt-12 grid gap-4 text-left">
