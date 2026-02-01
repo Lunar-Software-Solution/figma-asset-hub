@@ -31,7 +31,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { teamId } = await req.json();
+    const { teamId, fileKey } = await req.json();
     if (!teamId) {
       throw new Error('Team ID required');
     }
@@ -48,25 +48,69 @@ serve(async (req) => {
       throw new Error('Figma not connected for this team');
     }
 
-    // Fetch recent files from Figma using Personal Access Token
-    const filesResponse = await fetch('https://api.figma.com/v1/me/files?page_size=20', {
-      headers: {
-        'X-Figma-Token': connection.access_token,
-      },
-    });
+    const figmaToken = connection.access_token;
 
-    if (!filesResponse.ok) {
-      if (filesResponse.status === 401) {
-        // Token expired, need to refresh
-        throw new Error('Figma token expired - please reconnect');
+    // If a specific file key is provided, fetch that file
+    if (fileKey) {
+      const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=1`, {
+        headers: { 'X-Figma-Token': figmaToken },
+      });
+
+      if (!fileResponse.ok) {
+        const errorText = await fileResponse.text();
+        console.error('Figma file API error:', fileResponse.status, errorText);
+        if (fileResponse.status === 401 || fileResponse.status === 403) {
+          throw new Error('Figma token expired or lacks permission - please reconnect');
+        }
+        if (fileResponse.status === 404) {
+          throw new Error('Figma file not found - check the file key');
+        }
+        throw new Error('Failed to fetch Figma file');
       }
-      throw new Error('Failed to fetch Figma files');
+
+      const fileData = await fileResponse.json();
+      return new Response(
+        JSON.stringify({ 
+          files: [{
+            key: fileKey,
+            name: fileData.name,
+            last_modified: fileData.lastModified,
+            thumbnail_url: fileData.thumbnailUrl,
+          }]
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const filesData = await filesResponse.json();
+    // Try to get user's recent files using the /v1/me endpoint
+    const meResponse = await fetch('https://api.figma.com/v1/me', {
+      headers: { 'X-Figma-Token': figmaToken },
+    });
 
+    if (!meResponse.ok) {
+      const errorText = await meResponse.text();
+      console.error('Figma /me API error:', meResponse.status, errorText);
+      if (meResponse.status === 401 || meResponse.status === 403) {
+        throw new Error('Figma token expired or invalid - please reconnect');
+      }
+      throw new Error('Failed to verify Figma connection');
+    }
+
+    const meData = await meResponse.json();
+    
+    // The Figma API with PAT doesn't have a "list all files" endpoint
+    // Users need to provide file keys directly or we need team/project IDs
+    // Return empty files with info that user should add files manually
     return new Response(
-      JSON.stringify({ files: filesData.files || [] }),
+      JSON.stringify({ 
+        files: [],
+        user: {
+          id: meData.id,
+          email: meData.email,
+          handle: meData.handle,
+        },
+        message: 'Connection verified! To import files, paste a Figma file URL.'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
