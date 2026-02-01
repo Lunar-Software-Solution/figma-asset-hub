@@ -300,6 +300,89 @@ export type Database = {
           },
         ]
       }
+      business_canvas_items: {
+        Row: {
+          block_type: Database["public"]["Enums"]["canvas_block_type"]
+          canvas_id: string
+          color: string
+          content: string
+          created_at: string
+          id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          block_type: Database["public"]["Enums"]["canvas_block_type"]
+          canvas_id: string
+          color?: string
+          content: string
+          created_at?: string
+          id?: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          block_type?: Database["public"]["Enums"]["canvas_block_type"]
+          canvas_id?: string
+          color?: string
+          content?: string
+          created_at?: string
+          id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_canvas_items_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "business_canvases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_canvases: {
+        Row: {
+          brand_id: string
+          created_at: string
+          created_by: string
+          id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_canvases_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_canvases_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_assets: {
         Row: {
           added_at: string
@@ -769,6 +852,16 @@ export type Database = {
         | "design_file"
         | "brand_asset"
         | "other"
+      canvas_block_type:
+        | "key_partners"
+        | "key_activities"
+        | "key_resources"
+        | "value_propositions"
+        | "customer_relationships"
+        | "channels"
+        | "customer_segments"
+        | "cost_structure"
+        | "revenue_streams"
       team_role: "viewer" | "editor" | "admin"
     }
     CompositeTypes: {
@@ -906,6 +999,17 @@ export const Constants = {
         "design_file",
         "brand_asset",
         "other",
+      ],
+      canvas_block_type: [
+        "key_partners",
+        "key_activities",
+        "key_resources",
+        "value_propositions",
+        "customer_relationships",
+        "channels",
+        "customer_segments",
+        "cost_structure",
+        "revenue_streams",
       ],
       team_role: ["viewer", "editor", "admin"],
     },

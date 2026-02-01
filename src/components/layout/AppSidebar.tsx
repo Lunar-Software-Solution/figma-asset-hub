@@ -5,6 +5,7 @@ import {
   Images,
   FolderOpen,
   Figma,
+  LayoutGrid,
   Users,
   BarChart3,
   Settings,
@@ -21,6 +22,7 @@ const navItems = [
   { icon: Images, label: "Asset Library", path: "/assets" },
   { icon: FolderOpen, label: "Collections", path: "/collections" },
   { icon: Figma, label: "Figma Hub", path: "/figma" },
+  { icon: LayoutGrid, label: "Business Canvas", path: "/canvas" },
   { icon: Users, label: "Team", path: "/team" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
 ];
