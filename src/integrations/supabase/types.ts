@@ -470,7 +470,7 @@ export type Database = {
           {
             foreignKeyName: "figma_connections_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
