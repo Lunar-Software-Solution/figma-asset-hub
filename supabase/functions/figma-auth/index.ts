@@ -18,7 +18,7 @@ serve(async (req) => {
       throw new Error('Figma Client ID not configured');
     }
 
-    const scopes = 'files:read';
+    const scopes = 'file_read';
     const authUrl = new URL('https://www.figma.com/oauth');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
