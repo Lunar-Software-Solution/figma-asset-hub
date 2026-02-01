@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import Collections from "./pages/Collections";
 import FigmaHub from "./pages/FigmaHub";
+import BusinessCanvas from "./pages/BusinessCanvas";
 import Team from "./pages/Team";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
@@ -58,6 +59,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <FigmaHub />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/canvas"
+              element={
+                <ProtectedRoute>
+                  <BusinessCanvas />
                 </ProtectedRoute>
               }
             />
