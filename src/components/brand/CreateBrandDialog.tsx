@@ -75,25 +75,15 @@ export function CreateBrandDialog({
       if (existingTeams && existingTeams.length > 0) {
         teamId = existingTeams[0].team_id;
       } else {
-        // Create a default team for the user
-        const { data: newTeam, error: teamError } = await supabase
-          .from("teams")
-          .insert({
-            name: "My Team",
-            created_by: user.id,
-          })
-          .select()
-          .single();
+        // Create a default team for the user using the secure function
+        const { data: newTeamId, error: teamError } = await supabase
+          .rpc("create_team_with_admin", {
+            _name: "My Team",
+            _description: null,
+          });
 
         if (teamError) throw teamError;
-        teamId = newTeam.id;
-
-        // Add user as admin of the team
-        await supabase.from("team_members").insert({
-          team_id: teamId,
-          user_id: user.id,
-          role: "admin",
-        });
+        teamId = newTeamId;
       }
 
       const { data, error } = await supabase
