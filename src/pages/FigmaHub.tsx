@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Figma,
   Link as LinkIcon,
@@ -13,20 +13,51 @@ import {
   FolderOpen,
   Check,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
-
-const mockFigmaFiles = [
-  { id: 1, name: "Design System v2", lastModified: "2 hours ago", thumbnail: null },
-  { id: 2, name: "Marketing Website", lastModified: "Yesterday", thumbnail: null },
-  { id: 3, name: "Mobile App Screens", lastModified: "3 days ago", thumbnail: null },
-  { id: 4, name: "Icon Library", lastModified: "1 week ago", thumbnail: null },
-];
+import { useFigmaConnection } from "@/hooks/useFigmaConnection";
+import { useBrand } from "@/contexts/BrandContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDistanceToNow } from "date-fns";
 
 export default function FigmaHub() {
-  const [isConnected, setIsConnected] = useState(false);
+  const { user } = useAuth();
+  const { currentBrand } = useBrand();
+  const teamId = currentBrand?.team_id || null;
+  
+  const {
+    connection,
+    files,
+    isLoading,
+    isLoadingFiles,
+    connect,
+    disconnect,
+    refreshFiles,
+  } = useFigmaConnection(teamId);
 
-  if (!isConnected) {
+  if (!user) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+          <p className="text-muted-foreground">Please log in to connect Figma.</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!connection) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -48,13 +79,19 @@ export default function FigmaHub() {
               <Button
                 size="lg"
                 className="w-full gap-2"
-                onClick={() => setIsConnected(true)}
+                onClick={connect}
+                disabled={!teamId}
               >
                 <Figma className="h-4 w-4" />
                 Connect Figma Account
               </Button>
+              {!teamId && (
+                <p className="text-xs text-destructive">
+                  Please select a brand first to connect Figma
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
-                We'll request read/write access to your Figma files
+                We'll request read access to your Figma files
               </p>
             </div>
 
@@ -94,12 +131,22 @@ export default function FigmaHub() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="gap-1 text-success border-success/30">
+            <Badge variant="outline" className="gap-1 text-green-600 border-green-600/30">
               <Check className="h-3 w-3" />
               Connected
             </Badge>
-            <Button variant="outline" size="sm" className="gap-2">
-              <RefreshCw className="h-4 w-4" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={refreshFiles}
+              disabled={isLoadingFiles}
+            >
+              {isLoadingFiles ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               Sync Now
             </Button>
           </div>
@@ -115,10 +162,10 @@ export default function FigmaHub() {
                 </div>
                 <div>
                   <CardTitle className="text-base">Figma Workspace</CardTitle>
-                  <CardDescription>design-team@company.com</CardDescription>
+                  <CardDescription>{connection.figma_email || connection.figma_user_id}</CardDescription>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" className="text-destructive">
+              <Button variant="ghost" size="sm" className="text-destructive" onClick={disconnect}>
                 Disconnect
               </Button>
             </div>
@@ -135,29 +182,70 @@ export default function FigmaHub() {
           </TabsList>
 
           <TabsContent value="files" className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {mockFigmaFiles.map((file) => (
-                <motion.div key={file.id} whileHover={{ y: -2 }}>
-                  <Card className="cursor-pointer hover:border-primary/50 transition-all">
-                    {/* Thumbnail */}
-                    <div className="aspect-video bg-secondary flex items-center justify-center border-b">
-                      <FolderOpen className="h-8 w-8 text-muted-foreground" />
-                    </div>
+            {isLoadingFiles ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i}>
+                    <Skeleton className="aspect-video" />
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">{file.lastModified}</p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Skeleton className="h-4 w-3/4 mb-2" />
+                      <Skeleton className="h-3 w-1/2" />
                     </CardContent>
                   </Card>
-                </motion.div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : files.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    No Figma files found. Make sure you have files in your Figma account.
+                  </p>
+                  <Button variant="outline" onClick={refreshFiles}>
+                    Refresh Files
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {files.map((file) => (
+                  <motion.div key={file.key} whileHover={{ y: -2 }}>
+                    <Card className="cursor-pointer hover:border-primary/50 transition-all">
+                      {/* Thumbnail */}
+                      <div className="aspect-video bg-secondary flex items-center justify-center border-b overflow-hidden">
+                        {file.thumbnail_url ? (
+                          <img 
+                            src={file.thumbnail_url} 
+                            alt={file.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <FolderOpen className="h-8 w-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(file.last_modified), { addSuffix: true })}
+                            </p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 flex-shrink-0"
+                            onClick={() => window.open(`https://www.figma.com/file/${file.key}`, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="import">
