@@ -245,6 +245,7 @@ export type Database = {
       }
       brands: {
         Row: {
+          business_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -258,6 +259,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          business_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -271,6 +273,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          business_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -284,6 +287,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "brands_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "brands_parent_id_fkey"
             columns: ["parent_id"]
@@ -343,7 +353,8 @@ export type Database = {
       }
       business_canvases: {
         Row: {
-          brand_id: string
+          brand_id: string | null
+          business_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -351,7 +362,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          brand_id: string
+          brand_id?: string | null
+          business_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -359,7 +371,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          brand_id?: string
+          brand_id?: string | null
+          business_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -375,7 +388,58 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "business_canvases_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "business_canvases_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "businesses_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"

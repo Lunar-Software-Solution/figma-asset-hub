@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { BrandSwitcher } from "@/components/brand/BrandSwitcher";
+import { BusinessSwitcher } from "@/components/business/BusinessSwitcher";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -52,9 +52,9 @@ export function AppSidebar() {
         <span className="text-lg font-semibold text-foreground">DesignVault</span>
       </div>
 
-      {/* Brand Switcher */}
+      {/* Business/Brand Switcher */}
       <div className="p-4 border-b border-border">
-        <BrandSwitcher />
+        <BusinessSwitcher />
       </div>
 
       {/* Quick Actions */}
