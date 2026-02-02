@@ -1,282 +1,194 @@
 
-# Plan: Enhance Dashboard with All System Objects
+
+# Plan: Expand Business Canvas with 15 Strategic Planning Blocks
 
 ## Overview
-Expand the current dashboard to display a comprehensive overview of all entity types in the system: **Businesses**, **Brands**, **Campaigns**, **Collections**, **Assets**, **Scheduled Posts**, **Figma Files**, and **Team Members**. The enhanced dashboard will provide at-a-glance visibility into all aspects of the platform with quick navigation to each section.
+Expand the current 9-block Business Model Canvas to include 15 strategic planning blocks, adding: **Challenges**, **Competitors**, **Innovation**, **Unique Selling Point**, **Corporate Structure**, **Solution**, **Impact**, and **Success Metrics**. This requires database schema changes, enum updates, and a redesigned tabbed UI to accommodate the additional blocks.
 
 ## Current State
-The dashboard currently shows:
-- 4 stat cards: Assets, Collections, Team Members, Downloads
-- Recent Assets list
-- Activity Feed
+- **Database**: `canvas_block_type` enum with 9 values
+- **UI**: Fixed 10x6 grid layout designed for standard BMC
+- **Blocks**: key_partners, key_activities, key_resources, value_propositions, customer_relationships, channels, customer_segments, cost_structure, revenue_streams
 
-Missing from the dashboard:
-- Businesses overview
-- Brands overview
-- Campaigns overview with status breakdown
-- Scheduled Posts / Calendar preview
-- Figma connection status
+## New Block Types to Add
+
+| Block Type | Title | Description | Category |
+|------------|-------|-------------|----------|
+| challenges | Challenges | Problems and obstacles to overcome | Strategic |
+| competitors | Competitors | Market competition analysis | Strategic |
+| innovation | Innovation | New ideas and improvements | Strategic |
+| unique_selling_point | Unique Selling Point | What sets you apart | Value |
+| corporate_structure | Corporate Structure | Organizational hierarchy | Operations |
+| solution | Solution | How you solve customer problems | Value |
+| impact | Impact | Measurable outcomes and effects | Outcomes |
+| success_metrics | Success Metrics | KPIs and success indicators | Outcomes |
 
 ## Implementation Plan
 
-### Phase 1: Expand Dashboard Stats Hook
+### Phase 1: Database Schema Update
 
-**File: `src/hooks/useDashboardStats.ts`**
+**Migration SQL:**
+```sql
+-- Add new values to the canvas_block_type enum
+ALTER TYPE public.canvas_block_type ADD VALUE 'challenges';
+ALTER TYPE public.canvas_block_type ADD VALUE 'competitors';
+ALTER TYPE public.canvas_block_type ADD VALUE 'innovation';
+ALTER TYPE public.canvas_block_type ADD VALUE 'unique_selling_point';
+ALTER TYPE public.canvas_block_type ADD VALUE 'corporate_structure';
+ALTER TYPE public.canvas_block_type ADD VALUE 'solution';
+ALTER TYPE public.canvas_block_type ADD VALUE 'impact';
+ALTER TYPE public.canvas_block_type ADD VALUE 'success_metrics';
+```
 
-Add new data queries:
-- `totalBusinesses` - Count from businesses table
-- `totalBrands` - Count from brands table  
-- `totalCampaigns` - Count from campaigns table
-- `activeCampaigns` - Campaigns with status = 'active'
-- `scheduledPosts` - Count of posts with status = 'scheduled'
-- `upcomingPosts` - Next 5 scheduled posts with dates
-- `recentCampaigns` - Last 5 campaigns created/modified
-- `figmaConnected` - Boolean for Figma connection status
-- `figmaFileCount` - Number of Figma files (if connected)
+### Phase 2: Update TypeScript Types
 
-New interfaces:
+**File: `src/hooks/useBusinessCanvas.ts`**
+
+Update the `CanvasBlockType` union type:
 ```typescript
-interface DashboardStats {
-  totalAssets: number;
-  totalCollections: number;
-  teamMembers: number;
-  totalDownloads: number;
-  totalBusinesses: number;
-  totalBrands: number;
-  totalCampaigns: number;
-  activeCampaigns: number;
-  scheduledPosts: number;
-  figmaConnected: boolean;
-}
-
-interface RecentCampaign {
-  id: string;
-  name: string;
-  status: CampaignStatus;
-  start_date: string | null;
-  end_date: string | null;
-}
-
-interface UpcomingPost {
-  id: string;
-  title: string | null;
-  content: string;
-  scheduled_for: string;
-  platform: SocialPlatform;
-  campaign_name?: string;
-}
+export type CanvasBlockType =
+  // Original BMC blocks
+  | "key_partners"
+  | "key_activities"
+  | "key_resources"
+  | "value_propositions"
+  | "customer_relationships"
+  | "channels"
+  | "customer_segments"
+  | "cost_structure"
+  | "revenue_streams"
+  // New strategic blocks
+  | "challenges"
+  | "competitors"
+  | "innovation"
+  | "unique_selling_point"
+  | "corporate_structure"
+  | "solution"
+  | "impact"
+  | "success_metrics";
 ```
 
-### Phase 2: Redesign Dashboard Layout
+### Phase 3: Reorganize UI with Tabbed Views
 
-**File: `src/pages/Dashboard.tsx`**
+The canvas will be organized into **3 tabs** to logically group the 15 blocks:
 
-New layout structure:
+**Tab 1: Business Model (Original BMC - 9 blocks)**
+- Key Partners, Key Activities, Key Resources
+- Value Propositions, Customer Relationships, Channels
+- Customer Segments, Cost Structure, Revenue Streams
+
+**Tab 2: Strategy & Competition (4 blocks)**
+- Challenges, Competitors, Innovation, Unique Selling Point
+
+**Tab 3: Operations & Metrics (4 blocks - adjusted)**
+- Corporate Structure, Solution, Impact, Success Metrics
+
+### Phase 4: Update Block Configurations
+
+**File: `src/pages/BusinessCanvas.tsx`**
+
+Add new block configurations:
+```typescript
+// Strategic blocks
+{ type: "challenges", title: "Challenges", description: "Problems and obstacles to overcome", color: "#DC2626" },
+{ type: "competitors", title: "Competitors", description: "Market competition analysis", color: "#7C3AED" },
+{ type: "innovation", title: "Innovation", description: "New ideas and improvements", color: "#0EA5E9" },
+{ type: "unique_selling_point", title: "Unique Selling Point", description: "What sets you apart", color: "#F59E0B" },
+
+// Operations & Metrics blocks
+{ type: "corporate_structure", title: "Corporate Structure", description: "Organizational hierarchy", color: "#6366F1" },
+{ type: "solution", title: "Solution", description: "How you solve customer problems", color: "#10B981" },
+{ type: "impact", title: "Impact", description: "Measurable outcomes and effects", color: "#8B5CF6" },
+{ type: "success_metrics", title: "Success Metrics", description: "KPIs and success indicators", color: "#F43F5E" },
+```
+
+### Phase 5: Create Tabbed Canvas Layout
+
+**Updated UI Structure:**
 
 ```text
-+--------------------------------------------------+
-| Welcome Header + Quick Actions                    |
-+--------------------------------------------------+
-| Stats Row 1: Assets | Collections | Campaigns    |
-+--------------------------------------------------+
-| Stats Row 2: Businesses | Brands | Posts | Team  |
-+--------------------------------------------------+
-| +-------------------+  +----------------------+   |
-| | Recent Campaigns  |  | Upcoming Posts       |   |
-| | (campaign list    |  | (next scheduled      |   |
-| | with status)      |  | posts preview)       |   |
-| +-------------------+  +----------------------+   |
-+--------------------------------------------------+
-| +-------------------+  +-------------------+      |
-| | Recent Assets     |  | Activity Feed     |      |
-| | (asset cards)     |  | (team activity)   |      |
-| +-------------------+  +-------------------+      |
-+--------------------------------------------------+
-| Figma Status Bar (optional, if connected)        |
-+--------------------------------------------------+
++----------------------------------------------------------+
+| Header: Business Model Canvas | [Business] [Brand] Toggle |
++----------------------------------------------------------+
+| [Business Model] [Strategy] [Operations & Metrics] Tabs   |
++----------------------------------------------------------+
+
+Tab 1: Business Model (standard BMC grid - existing layout)
++----------------------------------------------------------+
+| Key Partners | Key Activities  | Value Props | Cust Rel  | Cust Segments |
+|              | Key Resources   |             | Channels  |               |
+|----------------------------------------------------------|
+| Cost Structure                 | Revenue Streams          |
++----------------------------------------------------------+
+
+Tab 2: Strategy & Competition (2x2 grid)
++----------------------------------------------------------+
+| Challenges          | Competitors                         |
+|----------------------------------------------------------| 
+| Innovation          | Unique Selling Point                |
++----------------------------------------------------------+
+
+Tab 3: Operations & Metrics (2x2 grid)
++----------------------------------------------------------+
+| Corporate Structure | Solution                            |
+|----------------------------------------------------------| 
+| Impact              | Success Metrics                     |
++----------------------------------------------------------+
 ```
 
-### Phase 3: Create Dashboard Components
+### Phase 6: Implement Tab Component
 
-**New components in `src/components/dashboard/`:**
+Add tab navigation to BusinessCanvas.tsx using existing Tabs component:
+- Track active canvas view (business_model, strategy, operations)
+- Render appropriate grid layout based on active tab
+- Preserve all existing functionality (add, edit, delete items)
 
-1. **DashboardStatCard.tsx**
-   - Reusable stat card with icon, value, label, and optional trend
-   - Click-through navigation to relevant page
-   - Loading skeleton state
-
-2. **RecentCampaignsCard.tsx**
-   - Shows 5 most recent campaigns
-   - Displays name, status badge, date range
-   - "View all" link to /campaigns
-
-3. **UpcomingPostsCard.tsx**
-   - Shows next 5 scheduled posts
-   - Displays post preview, platform icon, scheduled time
-   - "View calendar" link to /calendar
-
-4. **FigmaStatusCard.tsx**
-   - Shows connection status
-   - File count if connected
-   - Quick link to Figma Hub
-
-5. **EntityOverviewCard.tsx**
-   - Generic card for Business/Brand quick stats
-   - Shows current selection with color indicator
-   - Links to Business Overview page
-
-### Phase 4: Update Dashboard Page
-
-**Changes to `src/pages/Dashboard.tsx`:**
-
-1. **Enhanced Stats Grid**
-   - 8 stat cards in 2 rows (4 columns each)
-   - Row 1: Assets, Collections, Campaigns (active), Scheduled Posts
-   - Row 2: Businesses, Brands, Team Members, Downloads
-
-2. **Quick Actions Update**
-   - Add "New Campaign" action
-   - Add "Schedule Post" action
-   - Keep existing: Upload Assets, Create Collection, Connect Figma
-
-3. **New Content Sections**
-   - Recent Campaigns card (lg:col-span-1)
-   - Upcoming Posts card (lg:col-span-1)
-   - Recent Assets card (lg:col-span-1) - already exists
-   - Activity Feed card (lg:col-span-1) - already exists
-
-4. **Figma Integration Status**
-   - Small banner/badge showing Figma connection status
-   - Quick action to connect if not connected
-
-### Phase 5: Add Navigation Links
-
-Each dashboard card/stat will link to its respective page:
-- Assets stat -> /assets
-- Collections stat -> /collections  
-- Campaigns stat -> /campaigns
-- Businesses stat -> /business (BusinessOverview)
-- Brands stat -> /business (with brand filter)
-- Team stat -> /team
-- Posts stat -> /calendar
-- Figma -> /figma
-
-## Data Flow
-
-```text
-Dashboard.tsx
-    |
-    +-> useDashboardStats() -- expanded hook
-    |       |
-    |       +-> assets (count)
-    |       +-> collections (count)
-    |       +-> campaigns (count + active count + recent)
-    |       +-> businesses (count)
-    |       +-> brands (count)
-    |       +-> team_members (count)
-    |       +-> campaign_posts + post_schedules (upcoming)
-    |       +-> figma_connections (status)
-    |       +-> activity_log (recent)
-    |       +-> asset_analytics (downloads)
-    |
-    +-> useBusiness() -- current business context
-    +-> useBrand() -- current brand context
-```
-
-## Files to Create
-- `src/components/dashboard/DashboardStatCard.tsx`
-- `src/components/dashboard/RecentCampaignsCard.tsx`
-- `src/components/dashboard/UpcomingPostsCard.tsx`
-- `src/components/dashboard/FigmaStatusCard.tsx`
-- `src/components/dashboard/index.ts`
+---
 
 ## Files to Modify
-- `src/hooks/useDashboardStats.ts` - Add new queries for all entities
-- `src/pages/Dashboard.tsx` - Complete redesign with new layout
 
-## Technical Details
+1. **Database Migration** (new file in supabase/migrations/)
+   - Add 8 new enum values to `canvas_block_type`
 
-### Database Queries (in useDashboardStats.ts)
+2. **`src/hooks/useBusinessCanvas.ts`**
+   - Expand `CanvasBlockType` union type with 8 new values
 
-```typescript
-// Parallel fetch for all counts
-const [
-  assetsRes,
-  collectionsRes,
-  campaignsRes,
-  businessesRes,
-  brandsRes,
-  membersRes,
-  analyticsRes,
-  scheduledPostsRes,
-  figmaRes,
-] = await Promise.all([
-  supabase.from("assets").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
-  supabase.from("collections").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
-  supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
-  supabase.from("businesses").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
-  supabase.from("brands").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
-  supabase.from("team_members").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
-  supabase.from("asset_analytics").select("id", { count: "exact", head: true }).eq("action", "download"),
-  supabase.from("campaign_posts").select("id", { count: "exact", head: true })
-    .eq("team_id", currentTeamId).eq("status", "scheduled"),
-  supabase.from("figma_connections").select("id").eq("team_id", currentTeamId).maybeSingle(),
-]);
+3. **`src/pages/BusinessCanvas.tsx`**
+   - Add new block configurations (8 new blocks)
+   - Implement tabbed navigation (3 tabs)
+   - Create layouts for Strategy and Operations tabs
+   - Keep existing BMC layout as first tab
 
-// Fetch upcoming posts with schedule info
-const { data: upcomingPosts } = await supabase
-  .from("post_schedules")
-  .select(`
-    id,
-    scheduled_for,
-    platform,
-    post:campaign_posts(id, title, content, campaign:campaigns(name))
-  `)
-  .gte("scheduled_for", new Date().toISOString())
-  .order("scheduled_for", { ascending: true })
-  .limit(5);
+---
 
-// Fetch recent campaigns
-const { data: recentCampaigns } = await supabase
-  .from("campaigns")
-  .select("id, name, status, start_date, end_date")
-  .eq("team_id", currentTeamId)
-  .order("updated_at", { ascending: false })
-  .limit(5);
-```
+## Technical Considerations
 
-### UI Component Example
+### Enum Extension in PostgreSQL
+- `ALTER TYPE ... ADD VALUE` is safe and doesn't affect existing data
+- New values are simply appended to the enum
+- Existing canvas items remain unchanged
 
-```tsx
-// Stat card with navigation
-<Link to="/campaigns">
-  <Card className="hover-lift cursor-pointer">
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">
-        Active Campaigns
-      </CardTitle>
-      <Megaphone className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{stats.activeCampaigns}</div>
-      <p className="text-xs text-muted-foreground">
-        of {stats.totalCampaigns} total campaigns
-      </p>
-    </CardContent>
-  </Card>
-</Link>
-```
+### Backward Compatibility
+- All existing canvas items continue to work
+- Users see their existing data in the "Business Model" tab
+- New blocks are empty by default
 
-## Empty State Handling
+### UI/UX
+- Tabs provide clear separation of concerns
+- Each tab has an appropriate grid layout
+- Mobile: tabs stack vertically, blocks scroll
 
-For new users with no data:
-- Show encouraging onboarding prompts
-- "Get started" CTA buttons for each empty section
-- Hide sections that have no relevance (e.g., hide Figma status if not connected)
+### TypeScript Sync
+- After migration runs, `types.ts` auto-updates from Supabase
+- Frontend type must match database enum exactly
 
-## Performance Considerations
+---
 
-- Use parallel queries with `Promise.all` for all counts
-- React Query caching to prevent redundant fetches
-- Skeleton loading states for each section independently
-- Only fetch detailed data (recent items) after counts load
+## Summary
+
+This enhancement transforms the Business Canvas from a standard 9-block BMC into a comprehensive 15-block strategic planning tool, organized into three logical tabs:
+
+1. **Business Model** - Traditional BMC for core business planning
+2. **Strategy** - Competitive analysis and innovation focus  
+3. **Operations & Metrics** - Structure and measurement
+
