@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { useBrand } from "@/contexts/BrandContext";
 import { useToast } from "@/hooks/use-toast";
+import { mockCampaigns } from "@/lib/mockData";
 import type { Tables, TablesInsert, TablesUpdate, Enums } from "@/integrations/supabase/types";
 
 export type Campaign = Tables<"campaigns">;
@@ -60,11 +61,19 @@ export function useCampaigns() {
       const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
-      setCampaigns(data || []);
+      
+      // Use mock data if no real data exists
+      if (!data || data.length === 0) {
+        setCampaigns(mockCampaigns as unknown as Campaign[]);
+      } else {
+        setCampaigns(data);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch campaigns";
       setError(message);
       console.error("Error fetching campaigns:", err);
+      // Fallback to mock data on error
+      setCampaigns(mockCampaigns as unknown as Campaign[]);
     } finally {
       setIsLoading(false);
     }
