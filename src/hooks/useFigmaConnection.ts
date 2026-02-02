@@ -132,6 +132,49 @@ export function useFigmaConnection(teamId: string | null) {
     }
   };
 
+  const importFileByUrl = async (figmaUrl: string) => {
+    if (!teamId || !connection) return null;
+
+    // Extract file key from Figma URL
+    // Formats: https://www.figma.com/file/KEY/... or https://www.figma.com/design/KEY/...
+    const match = figmaUrl.match(/figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)/);
+    if (!match) {
+      toast.error("Invalid Figma URL. Please paste a valid Figma file URL.");
+      return null;
+    }
+
+    const fileKey = match[1];
+    setIsLoadingFiles(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("figma-files", {
+        body: { teamId, fileKey },
+      });
+
+      if (error) throw error;
+      
+      if (data.files && data.files.length > 0) {
+        // Add the new file to the list (avoid duplicates)
+        setFiles((prev) => {
+          const exists = prev.some((f) => f.key === data.files[0].key);
+          if (exists) {
+            return prev;
+          }
+          return [...data.files, ...prev];
+        });
+        toast.success(`Imported "${data.files[0].name}" from Figma`);
+        return data.files[0];
+      }
+      return null;
+    } catch (error: any) {
+      console.error("Error importing Figma file:", error);
+      toast.error(error.message || "Failed to import file");
+      return null;
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
+
   useEffect(() => {
     if (connection) {
       fetchFiles();
@@ -147,5 +190,6 @@ export function useFigmaConnection(teamId: string | null) {
     connect,
     disconnect,
     refreshFiles: fetchFiles,
+    importFileByUrl,
   };
 }
