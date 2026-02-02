@@ -2,7 +2,8 @@ import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CanvasBlock } from "@/components/canvas/CanvasBlock";
 import { AddCanvasItemDialog } from "@/components/canvas/AddCanvasItemDialog";
-import { useBusinessCanvas, CanvasBlockType, CanvasLevel } from "@/hooks/useBusinessCanvas";
+import { CanvasNoteEditorDialog } from "@/components/canvas/CanvasNoteEditorDialog";
+import { useBusinessCanvas, CanvasBlockType, CanvasLevel, CanvasItem } from "@/hooks/useBusinessCanvas";
 import { useBrand } from "@/contexts/BrandContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,10 +155,38 @@ export default function BusinessCanvas() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<BlockConfig | null>(null);
+  
+  // State for rich text editor dialog
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<CanvasItem | null>(null);
+  const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
 
   const handleAddClick = (block: BlockConfig) => {
     setSelectedBlock(block);
-    setDialogOpen(true);
+    setEditingItem(null);
+    setEditorMode("create");
+    setEditorOpen(true);
+  };
+
+  const handleEditItem = (item: CanvasItem, block: BlockConfig) => {
+    setSelectedBlock(block);
+    setEditingItem(item);
+    setEditorMode("edit");
+    setEditorOpen(true);
+  };
+
+  const handleEditorSave = async (content: string, color: string) => {
+    if (!selectedBlock) return;
+    
+    if (editorMode === "create") {
+      await addItem(selectedBlock.type, content, color);
+    } else if (editingItem) {
+      // Update both content and color
+      await updateItem(editingItem.id, content);
+      if (editingItem.color !== color) {
+        await updateItemColor(editingItem.id, color);
+      }
+    }
   };
 
   const handleAddItem = async (content: string, color: string) => {
@@ -222,6 +251,7 @@ export default function BusinessCanvas() {
         onUpdateItem={updateItem}
         onUpdateItemColor={updateItemColor}
         onDeleteItem={deleteItem}
+        onEditItem={(item) => handleEditItem(item, block)}
         className="h-full"
       />
     </div>
@@ -350,13 +380,25 @@ export default function BusinessCanvas() {
           </TabsContent>
         </Tabs>
 
-        {/* Add Item Dialog */}
+        {/* Add Item Dialog - Keep for quick add */}
         <AddCanvasItemDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           blockType={selectedBlock?.type || null}
           blockLabel={selectedBlock?.title || ""}
           onAdd={handleAddItem}
+        />
+
+        {/* Rich Text Editor Dialog */}
+        <CanvasNoteEditorDialog
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          initialContent={editingItem?.content || ""}
+          initialColor={editingItem?.color || "yellow"}
+          blockLabel={selectedBlock?.title || ""}
+          blockType={selectedBlock?.type || ""}
+          onSave={handleEditorSave}
+          mode={editorMode}
         />
       </div>
     </AppLayout>

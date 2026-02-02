@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Palette } from "lucide-react";
+import { X, Palette, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { MarkdownPreview } from "./MarkdownPreview";
 
 interface CanvasItemProps {
   id: string;
@@ -16,6 +17,7 @@ interface CanvasItemProps {
   onUpdate: (id: string, content: string) => void;
   onUpdateColor: (id: string, color: string) => void;
   onDelete: (id: string) => void;
+  onEdit: () => void;
 }
 
 const colorOptions = [
@@ -44,6 +46,7 @@ export function CanvasItem({
   onUpdate,
   onUpdateColor,
   onDelete,
+  onEdit,
 }: CanvasItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content);
@@ -86,10 +89,21 @@ export function CanvasItem({
         getColorClass(color),
         getBorderClass(color)
       )}
-      onClick={() => !isEditing && setIsEditing(true)}
+      onClick={onEdit}
     >
       {/* Action buttons */}
       <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="secondary"
+          size="icon"
+          className="h-6 w-6 rounded-full shadow-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Maximize2 className="h-3 w-3" />
+        </Button>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -130,21 +144,8 @@ export function CanvasItem({
         </Button>
       </div>
 
-      {isEditing ? (
-        <textarea
-          ref={textareaRef}
-          value={editContent}
-          onChange={(e) => setEditContent(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className="w-full h-full min-h-[40px] bg-transparent resize-none border-none outline-none text-sm text-foreground"
-          onClick={(e) => e.stopPropagation()}
-        />
-      ) : (
-        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-          {content}
-        </p>
-      )}
+      {/* Content - Show markdown preview */}
+      <MarkdownPreview content={content} truncate className="pointer-events-none" />
     </motion.div>
   );
 }
