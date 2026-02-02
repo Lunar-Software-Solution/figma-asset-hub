@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,37 +30,79 @@ import {
   Trash2,
   Eye,
   Tag,
+  FolderOpen,
+  ImageIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-// Mock data
-const mockAssets = [
-  { id: 1, name: "Hero Banner.png", type: "image", size: "2.4 MB", updated: "2 hours ago", tags: ["marketing", "hero"] },
-  { id: 2, name: "Icon Pack - Navigation.svg", type: "icon", size: "156 KB", updated: "4 hours ago", tags: ["icons", "ui"] },
-  { id: 3, name: "Brand Colors.fig", type: "design_file", size: "1.2 MB", updated: "Yesterday", tags: ["brand"] },
-  { id: 4, name: "Logo - Dark Mode.svg", type: "vector", size: "48 KB", updated: "2 days ago", tags: ["logo", "brand"] },
-  { id: 5, name: "Product Shot 1.jpg", type: "image", size: "3.8 MB", updated: "3 days ago", tags: ["product"] },
-  { id: 6, name: "Social Media Kit.zip", type: "design_file", size: "12 MB", updated: "1 week ago", tags: ["social", "marketing"] },
-  { id: 7, name: "UI Components.fig", type: "design_file", size: "4.2 MB", updated: "1 week ago", tags: ["ui", "components"] },
-  { id: 8, name: "Illustration - Welcome.svg", type: "vector", size: "234 KB", updated: "2 weeks ago", tags: ["illustration"] },
-];
+import { useAssets, type Asset } from "@/hooks/useAssets";
+import { AddToCollectionDialog } from "@/components/collections";
 
 const typeColors: Record<string, string> = {
-  image: "bg-vault-blue/10 text-vault-blue",
-  icon: "bg-vault-purple/10 text-vault-purple",
-  vector: "bg-vault-green/10 text-vault-green",
-  design_file: "bg-vault-orange/10 text-vault-orange",
+  image: "bg-blue-500/10 text-blue-600",
+  icon: "bg-purple-500/10 text-purple-600",
+  vector: "bg-green-500/10 text-green-600",
+  design_file: "bg-orange-500/10 text-orange-600",
+  brand_asset: "bg-cyan-500/10 text-cyan-600",
+  other: "bg-gray-500/10 text-gray-600",
 };
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffHours < 1) return "Just now";
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString();
+}
 
 export default function Assets() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [selectedAssets, setSelectedAssets] = useState<number[]>([]);
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [assetTypeFilter, setAssetTypeFilter] = useState<string>("all");
+  const [addToCollectionAsset, setAddToCollectionAsset] = useState<Asset | null>(null);
 
-  const toggleAssetSelection = (id: number) => {
+  const {
+    assets,
+    isLoading,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    addToCollection,
+    deleteAsset,
+  } = useAssets({ assetType: assetTypeFilter as any });
+
+  const toggleAssetSelection = (id: string) => {
     setSelectedAssets((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+  };
+
+  const handleAddToCollection = async (collectionId: string) => {
+    if (!addToCollectionAsset) return;
+    await addToCollection({ assetId: addToCollectionAsset.id, collectionId });
+    setAddToCollectionAsset(null);
+  };
+
+  const handleDeleteSelected = async () => {
+    for (const id of selectedAssets) {
+      await deleteAsset(id);
+    }
+    setSelectedAssets([]);
   };
 
   return (
@@ -94,11 +136,13 @@ export default function Assets() {
             <Input
               placeholder="Search by name, tag, or type..."
               className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           {/* Filters */}
-          <Select>
+          <Select value={assetTypeFilter} onValueChange={setAssetTypeFilter}>
             <SelectTrigger className="w-40">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="All types" />
@@ -109,10 +153,11 @@ export default function Assets() {
               <SelectItem value="icon">Icons</SelectItem>
               <SelectItem value="vector">Vectors</SelectItem>
               <SelectItem value="design_file">Design files</SelectItem>
+              <SelectItem value="brand_asset">Brand assets</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
             <SelectTrigger className="w-40">
               <SortAsc className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Sort by" />
@@ -157,7 +202,12 @@ export default function Assets() {
                 <Tag className="h-4 w-4" />
                 Add Tags
               </Button>
-              <Button variant="ghost" size="sm" className="gap-2 text-destructive hover:text-destructive">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-destructive hover:text-destructive"
+                onClick={handleDeleteSelected}
+              >
                 <Trash2 className="h-4 w-4" />
                 Delete
               </Button>
@@ -173,14 +223,36 @@ export default function Assets() {
           </motion.div>
         )}
 
-        {/* Asset Grid */}
-        {viewMode === "grid" ? (
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
+            ))}
+          </div>
+        ) : assets.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No assets yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Upload your first asset to get started.
+            </p>
+            <Button>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Assets
+            </Button>
+          </motion.div>
+        ) : viewMode === "grid" ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
           >
-            {mockAssets.map((asset) => (
+            {assets.map((asset) => (
               <motion.div
                 key={asset.id}
                 whileHover={{ y: -2 }}
@@ -194,28 +266,38 @@ export default function Assets() {
               >
                 {/* Thumbnail */}
                 <div className="aspect-square bg-secondary flex items-center justify-center">
-                  <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
-                    <span className="text-2xl font-semibold text-muted-foreground">
-                      {asset.name[0]}
-                    </span>
-                  </div>
+                  {asset.thumbnail_url ? (
+                    <img
+                      src={asset.thumbnail_url}
+                      alt={asset.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
+                      <span className="text-2xl font-semibold text-muted-foreground">
+                        {asset.name[0]?.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
                 <div className="p-3">
                   <p className="text-sm font-medium truncate">{asset.name}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={cn("text-xs px-2 py-0.5 rounded-full", typeColors[asset.type])}>
-                      {asset.type.replace("_", " ")}
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full", typeColors[asset.asset_type])}>
+                      {asset.asset_type.replace("_", " ")}
                     </span>
-                    <span className="text-xs text-muted-foreground">{asset.size}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(asset.file_size)}
+                    </span>
                   </div>
                 </div>
 
                 {/* Quick Actions */}
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="secondary" size="icon" className="h-8 w-8">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
@@ -225,6 +307,15 @@ export default function Assets() {
                         <Eye className="h-4 w-4 mr-2" />
                         Preview
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAddToCollectionAsset(asset);
+                        }}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        Add to Collection
+                      </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Download className="h-4 w-4 mr-2" />
                         Download
@@ -233,7 +324,13 @@ export default function Assets() {
                         <LinkIcon className="h-4 w-4 mr-2" />
                         Copy Link
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteAsset(asset.id);
+                        }}
+                      >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </DropdownMenuItem>
@@ -256,12 +353,11 @@ export default function Assets() {
                   <th className="text-left text-xs font-medium text-muted-foreground p-4">Type</th>
                   <th className="text-left text-xs font-medium text-muted-foreground p-4">Size</th>
                   <th className="text-left text-xs font-medium text-muted-foreground p-4">Updated</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground p-4">Tags</th>
                   <th className="text-right text-xs font-medium text-muted-foreground p-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {mockAssets.map((asset) => (
+                {assets.map((asset) => (
                   <tr
                     key={asset.id}
                     className={cn(
@@ -272,41 +368,32 @@ export default function Assets() {
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
-                          <span className="text-sm font-medium text-muted-foreground">
-                            {asset.name[0]}
-                          </span>
+                        <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
+                          {asset.thumbnail_url ? (
+                            <img
+                              src={asset.thumbnail_url}
+                              alt={asset.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {asset.name[0]?.toUpperCase()}
+                            </span>
+                          )}
                         </div>
                         <span className="font-medium">{asset.name}</span>
                       </div>
                     </td>
                     <td className="p-4">
-                      <span className={cn("text-xs px-2 py-1 rounded-full", typeColors[asset.type])}>
-                        {asset.type.replace("_", " ")}
+                      <span className={cn("text-xs px-2 py-1 rounded-full", typeColors[asset.asset_type])}>
+                        {asset.asset_type.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="p-4 text-muted-foreground">{asset.size}</td>
-                    <td className="p-4 text-muted-foreground">{asset.updated}</td>
-                    <td className="p-4">
-                      <div className="flex gap-1">
-                        {asset.tags.slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            className="text-xs bg-secondary px-2 py-0.5 rounded-full text-muted-foreground"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {asset.tags.length > 2 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{asset.tags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                    <td className="p-4 text-muted-foreground">{formatFileSize(asset.file_size)}</td>
+                    <td className="p-4 text-muted-foreground">{formatDate(asset.updated_at)}</td>
                     <td className="p-4 text-right">
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
@@ -316,6 +403,15 @@ export default function Assets() {
                             <Eye className="h-4 w-4 mr-2" />
                             Preview
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAddToCollectionAsset(asset);
+                            }}
+                          >
+                            <FolderOpen className="h-4 w-4 mr-2" />
+                            Add to Collection
+                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Download className="h-4 w-4 mr-2" />
                             Download
@@ -324,7 +420,13 @@ export default function Assets() {
                             <LinkIcon className="h-4 w-4 mr-2" />
                             Copy Link
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteAsset(asset.id);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
@@ -338,6 +440,14 @@ export default function Assets() {
           </motion.div>
         )}
       </div>
+
+      {/* Add to Collection Dialog */}
+      <AddToCollectionDialog
+        open={!!addToCollectionAsset}
+        onOpenChange={(open) => !open && setAddToCollectionAsset(null)}
+        onAdd={handleAddToCollection}
+        assetName={addToCollectionAsset?.name}
+      />
     </AppLayout>
   );
 }

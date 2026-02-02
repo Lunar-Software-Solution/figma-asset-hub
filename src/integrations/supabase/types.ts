@@ -640,6 +640,8 @@ export type Database = {
       collections: {
         Row: {
           brand_id: string | null
+          business_id: string | null
+          campaign_id: string | null
           cover_image_url: string | null
           created_at: string
           created_by: string
@@ -652,6 +654,8 @@ export type Database = {
         }
         Insert: {
           brand_id?: string | null
+          business_id?: string | null
+          campaign_id?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by: string
@@ -664,6 +668,8 @@ export type Database = {
         }
         Update: {
           brand_id?: string | null
+          business_id?: string | null
+          campaign_id?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string
@@ -680,6 +686,20 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collections_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collections_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
           {
