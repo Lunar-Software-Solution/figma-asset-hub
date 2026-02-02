@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   Figma,
   Link as LinkIcon,
@@ -15,6 +16,7 @@ import {
   Check,
   ExternalLink,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useFigmaConnection } from "@/hooks/useFigmaConnection";
@@ -28,6 +30,8 @@ export default function FigmaHub() {
   const { currentBrand } = useBrand();
   const teamId = currentBrand?.team_id || null;
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [figmaUrl, setFigmaUrl] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   
   const {
     connection,
@@ -38,7 +42,18 @@ export default function FigmaHub() {
     connect,
     disconnect,
     refreshFiles,
+    importFileByUrl,
   } = useFigmaConnection(teamId);
+
+  const handleImportFile = async () => {
+    if (!figmaUrl.trim()) return;
+    setIsImporting(true);
+    const file = await importFileByUrl(figmaUrl);
+    if (file) {
+      setFigmaUrl("");
+    }
+    setIsImporting(false);
+  };
 
   if (!user) {
     return (
@@ -196,7 +211,39 @@ export default function FigmaHub() {
           </TabsList>
 
           <TabsContent value="files" className="space-y-4">
-            {isLoadingFiles ? (
+            {/* Import by URL */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <LinkIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Paste a Figma file URL (e.g., https://www.figma.com/design/...)"
+                      value={figmaUrl}
+                      onChange={(e) => setFigmaUrl(e.target.value)}
+                      className="pl-10"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleImportFile();
+                      }}
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleImportFile} 
+                    disabled={!figmaUrl.trim() || isImporting}
+                    className="gap-2"
+                  >
+                    {isImporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Import
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {isLoadingFiles && files.length === 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
                   <Card key={i}>
@@ -212,12 +259,12 @@ export default function FigmaHub() {
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    No Figma files found. Make sure you have files in your Figma account.
+                  <p className="text-muted-foreground mb-2">
+                    No Figma files imported yet.
                   </p>
-                  <Button variant="outline" onClick={refreshFiles}>
-                    Refresh Files
-                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Paste a Figma file URL above to import it.
+                  </p>
                 </CardContent>
               </Card>
             ) : (
