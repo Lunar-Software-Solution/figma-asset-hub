@@ -1,194 +1,305 @@
 
 
-# Plan: Expand Business Canvas with 15 Strategic Planning Blocks
+# Plan: Add Long-Form Rich Text Editor with AI Capabilities to Canvas Notes
 
 ## Overview
-Expand the current 9-block Business Model Canvas to include 15 strategic planning blocks, adding: **Challenges**, **Competitors**, **Innovation**, **Unique Selling Point**, **Corporate Structure**, **Solution**, **Impact**, and **Success Metrics**. This requires database schema changes, enum updates, and a redesigned tabbed UI to accommodate the additional blocks.
+Enhance the Business Canvas notes to support long-form markdown content with a rich text editor, plus AI-powered writing and editing features. Currently, notes are simple text fields with basic inline editing. This upgrade will provide a full-screen editor dialog with markdown support, formatting toolbar, and AI assistance.
 
 ## Current State
-- **Database**: `canvas_block_type` enum with 9 values
-- **UI**: Fixed 10x6 grid layout designed for standard BMC
-- **Blocks**: key_partners, key_activities, key_resources, value_propositions, customer_relationships, channels, customer_segments, cost_structure, revenue_streams
+- **CanvasItem.tsx**: Simple sticky note with inline textarea editing
+- **AddCanvasItemDialog.tsx**: Basic dialog with plain Textarea component
+- **Content Storage**: Plain text in `business_canvas_items.content` field (text type - already supports long content)
+- **No Rich Text**: No markdown rendering or formatting toolbar exists
 
-## New Block Types to Add
+## Proposed Solution
 
-| Block Type | Title | Description | Category |
-|------------|-------|-------------|----------|
-| challenges | Challenges | Problems and obstacles to overcome | Strategic |
-| competitors | Competitors | Market competition analysis | Strategic |
-| innovation | Innovation | New ideas and improvements | Strategic |
-| unique_selling_point | Unique Selling Point | What sets you apart | Value |
-| corporate_structure | Corporate Structure | Organizational hierarchy | Operations |
-| solution | Solution | How you solve customer problems | Value |
-| impact | Impact | Measurable outcomes and effects | Outcomes |
-| success_metrics | Success Metrics | KPIs and success indicators | Outcomes |
+### User Experience Flow
+
+1. **Click "Add your first note"** -> Opens expanded editor dialog
+2. **Click existing note** -> Opens editor dialog with current content
+3. **Editor Features**:
+   - Full-screen dialog with markdown editor
+   - Formatting toolbar (bold, italic, lists, headings, links)
+   - Live markdown preview panel
+   - AI assistant panel for content generation and editing
+4. **AI Capabilities**:
+   - "Write with AI" - Generate content based on prompts
+   - "Improve" - Enhance existing text
+   - "Expand" - Add more detail to content
+   - "Summarize" - Condense lengthy content
+   - "Fix Grammar" - Correct writing issues
+
+---
 
 ## Implementation Plan
 
-### Phase 1: Database Schema Update
+### Phase 1: Create Rich Text Editor Component
 
-**Migration SQL:**
-```sql
--- Add new values to the canvas_block_type enum
-ALTER TYPE public.canvas_block_type ADD VALUE 'challenges';
-ALTER TYPE public.canvas_block_type ADD VALUE 'competitors';
-ALTER TYPE public.canvas_block_type ADD VALUE 'innovation';
-ALTER TYPE public.canvas_block_type ADD VALUE 'unique_selling_point';
-ALTER TYPE public.canvas_block_type ADD VALUE 'corporate_structure';
-ALTER TYPE public.canvas_block_type ADD VALUE 'solution';
-ALTER TYPE public.canvas_block_type ADD VALUE 'impact';
-ALTER TYPE public.canvas_block_type ADD VALUE 'success_metrics';
-```
+**New File: `src/components/canvas/RichTextEditor.tsx`**
 
-### Phase 2: Update TypeScript Types
+A reusable markdown editor component with:
+- Textarea for markdown input with formatting toolbar
+- Preview pane showing rendered markdown
+- Toggle between edit/preview/split view modes
+- Keyboard shortcuts for common formatting (Ctrl+B, Ctrl+I, etc.)
 
-**File: `src/hooks/useBusinessCanvas.ts`**
-
-Update the `CanvasBlockType` union type:
 ```typescript
-export type CanvasBlockType =
-  // Original BMC blocks
-  | "key_partners"
-  | "key_activities"
-  | "key_resources"
-  | "value_propositions"
-  | "customer_relationships"
-  | "channels"
-  | "customer_segments"
-  | "cost_structure"
-  | "revenue_streams"
-  // New strategic blocks
-  | "challenges"
-  | "competitors"
-  | "innovation"
-  | "unique_selling_point"
-  | "corporate_structure"
-  | "solution"
-  | "impact"
-  | "success_metrics";
+interface RichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
 ```
 
-### Phase 3: Reorganize UI with Tabbed Views
+Toolbar buttons:
+- **Bold** (B) - Wraps selection with `**`
+- **Italic** (I) - Wraps selection with `*`
+- **Heading** (H) - Adds `## ` prefix
+- **Bullet List** - Adds `- ` prefix
+- **Numbered List** - Adds `1. ` prefix
+- **Link** - Wraps with `[text](url)`
+- **Code** - Wraps with backticks
 
-The canvas will be organized into **3 tabs** to logically group the 15 blocks:
+### Phase 2: Create AI Writing Assistant
 
-**Tab 1: Business Model (Original BMC - 9 blocks)**
-- Key Partners, Key Activities, Key Resources
-- Value Propositions, Customer Relationships, Channels
-- Customer Segments, Cost Structure, Revenue Streams
+**New File: `src/components/canvas/AIWritingAssistant.tsx`**
 
-**Tab 2: Strategy & Competition (4 blocks)**
-- Challenges, Competitors, Innovation, Unique Selling Point
+Collapsible AI panel with:
+- Text input for prompts
+- Quick action buttons (Improve, Expand, Summarize, Fix Grammar)
+- Streaming response display
+- "Apply" button to insert AI-generated content
 
-**Tab 3: Operations & Metrics (4 blocks - adjusted)**
-- Corporate Structure, Solution, Impact, Success Metrics
+**New File: `supabase/functions/canvas-ai/index.ts`**
 
-### Phase 4: Update Block Configurations
+Edge function to handle AI requests using Lovable AI:
+- System prompt tailored for business canvas content
+- Supports different action types (write, improve, expand, summarize, fix)
+- Streams response back to client
 
-**File: `src/pages/BusinessCanvas.tsx`**
+### Phase 3: Create Full Canvas Note Editor Dialog
 
-Add new block configurations:
+**New File: `src/components/canvas/CanvasNoteEditorDialog.tsx`**
+
+Full-screen editor dialog combining:
+- Rich text editor with toolbar
+- Markdown preview panel (toggle or split view)
+- AI assistant panel (collapsible sidebar)
+- Note color selector
+- Auto-save indicator
+- Cancel/Save actions
+
 ```typescript
-// Strategic blocks
-{ type: "challenges", title: "Challenges", description: "Problems and obstacles to overcome", color: "#DC2626" },
-{ type: "competitors", title: "Competitors", description: "Market competition analysis", color: "#7C3AED" },
-{ type: "innovation", title: "Innovation", description: "New ideas and improvements", color: "#0EA5E9" },
-{ type: "unique_selling_point", title: "Unique Selling Point", description: "What sets you apart", color: "#F59E0B" },
-
-// Operations & Metrics blocks
-{ type: "corporate_structure", title: "Corporate Structure", description: "Organizational hierarchy", color: "#6366F1" },
-{ type: "solution", title: "Solution", description: "How you solve customer problems", color: "#10B981" },
-{ type: "impact", title: "Impact", description: "Measurable outcomes and effects", color: "#8B5CF6" },
-{ type: "success_metrics", title: "Success Metrics", description: "KPIs and success indicators", color: "#F43F5E" },
+interface CanvasNoteEditorDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialContent?: string;
+  initialColor?: string;
+  blockLabel: string;
+  onSave: (content: string, color: string) => void;
+  mode: "create" | "edit";
+}
 ```
 
-### Phase 5: Create Tabbed Canvas Layout
-
-**Updated UI Structure:**
-
+Layout structure:
 ```text
-+----------------------------------------------------------+
-| Header: Business Model Canvas | [Business] [Brand] Toggle |
-+----------------------------------------------------------+
-| [Business Model] [Strategy] [Operations & Metrics] Tabs   |
-+----------------------------------------------------------+
-
-Tab 1: Business Model (standard BMC grid - existing layout)
-+----------------------------------------------------------+
-| Key Partners | Key Activities  | Value Props | Cust Rel  | Cust Segments |
-|              | Key Resources   |             | Channels  |               |
-|----------------------------------------------------------|
-| Cost Structure                 | Revenue Streams          |
-+----------------------------------------------------------+
-
-Tab 2: Strategy & Competition (2x2 grid)
-+----------------------------------------------------------+
-| Challenges          | Competitors                         |
-|----------------------------------------------------------| 
-| Innovation          | Unique Selling Point                |
-+----------------------------------------------------------+
-
-Tab 3: Operations & Metrics (2x2 grid)
-+----------------------------------------------------------+
-| Corporate Structure | Solution                            |
-|----------------------------------------------------------| 
-| Impact              | Success Metrics                     |
-+----------------------------------------------------------+
++------------------------------------------------------------------+
+| Block Name                              [Preview] [Split]  [X]   |
++------------------------------------------------------------------+
+| Toolbar: B | I | H | List | Code | Link          | Color Picker  |
++------------------------------------------------------------------+
+| +------------------------+  +------------------------------+     |
+| | Markdown Editor        |  | Preview                      |     |
+| | (textarea)             |  | (rendered markdown)          |     |
+| |                        |  |                              |     |
+| |                        |  |                              |     |
+| +------------------------+  +------------------------------+     |
++------------------------------------------------------------------+
+| AI Assistant                                          [Collapse] |
+| +--------------------------------------------------------------+ |
+| | [Write with AI...                                    ] [Go]  | |
+| | [Improve] [Expand] [Summarize] [Fix Grammar]                 | |
+| +--------------------------------------------------------------+ |
++------------------------------------------------------------------+
+|                                        [Cancel]  [Save Note]     |
++------------------------------------------------------------------+
 ```
 
-### Phase 6: Implement Tab Component
+### Phase 4: Update Existing Components
 
-Add tab navigation to BusinessCanvas.tsx using existing Tabs component:
-- Track active canvas view (business_model, strategy, operations)
-- Render appropriate grid layout based on active tab
-- Preserve all existing functionality (add, edit, delete items)
+**Modify: `src/components/canvas/CanvasItem.tsx`**
+
+- Keep sticky note appearance for display
+- Show markdown preview (truncated) instead of raw text
+- Double-click opens full editor dialog
+- Single click no longer enables inline editing (opens dialog instead)
+
+**Modify: `src/components/canvas/CanvasBlock.tsx`**
+
+- Pass new `onEditItem` handler
+- Update click behavior for notes
+
+**Modify: `src/components/canvas/AddCanvasItemDialog.tsx`**
+
+- Replace with redirect to new CanvasNoteEditorDialog
+- Or keep for quick notes, add "Expand Editor" button
+
+**Modify: `src/pages/BusinessCanvas.tsx`**
+
+- Add state for editor dialog
+- Add `editItem` handler for opening existing notes
+- Connect editor dialog to canvas operations
+
+### Phase 5: Markdown Rendering
+
+**Add dependency or simple implementation:**
+
+Option A: Use `marked` or `react-markdown` library for rendering
+Option B: Simple regex-based rendering for basic markdown (bold, italic, lists, headings)
+
+For the preview pane, render markdown to HTML safely.
 
 ---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/canvas/RichTextEditor.tsx` | Markdown editor with formatting toolbar |
+| `src/components/canvas/AIWritingAssistant.tsx` | AI panel with quick actions |
+| `src/components/canvas/CanvasNoteEditorDialog.tsx` | Full editor dialog |
+| `src/components/canvas/MarkdownPreview.tsx` | Markdown to HTML renderer |
+| `supabase/functions/canvas-ai/index.ts` | Edge function for AI requests |
 
 ## Files to Modify
 
-1. **Database Migration** (new file in supabase/migrations/)
-   - Add 8 new enum values to `canvas_block_type`
-
-2. **`src/hooks/useBusinessCanvas.ts`**
-   - Expand `CanvasBlockType` union type with 8 new values
-
-3. **`src/pages/BusinessCanvas.tsx`**
-   - Add new block configurations (8 new blocks)
-   - Implement tabbed navigation (3 tabs)
-   - Create layouts for Strategy and Operations tabs
-   - Keep existing BMC layout as first tab
+| File | Changes |
+|------|---------|
+| `src/components/canvas/CanvasItem.tsx` | Click opens editor, show markdown preview |
+| `src/components/canvas/CanvasBlock.tsx` | Add onEditItem prop |
+| `src/pages/BusinessCanvas.tsx` | Add editor dialog state and handlers |
+| `supabase/config.toml` | Add canvas-ai function |
 
 ---
 
-## Technical Considerations
+## Technical Details
 
-### Enum Extension in PostgreSQL
-- `ALTER TYPE ... ADD VALUE` is safe and doesn't affect existing data
-- New values are simply appended to the enum
-- Existing canvas items remain unchanged
+### Edge Function: canvas-ai
 
-### Backward Compatibility
-- All existing canvas items continue to work
-- Users see their existing data in the "Business Model" tab
-- New blocks are empty by default
+```typescript
+// supabase/functions/canvas-ai/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-### UI/UX
-- Tabs provide clear separation of concerns
-- Each tab has an appropriate grid layout
-- Mobile: tabs stack vertically, blocks scroll
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-### TypeScript Sync
-- After migration runs, `types.ts` auto-updates from Supabase
-- Frontend type must match database enum exactly
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const { action, content, prompt, blockType } = await req.json();
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+  const systemPrompts = {
+    write: `You are a business strategist helping create content for a "${blockType}" section of a Business Model Canvas. Write clear, actionable content based on the user's request.`,
+    improve: `Improve the following business canvas content. Make it clearer, more professional, and more actionable while preserving the core message.`,
+    expand: `Expand on the following business canvas content with more detail, examples, and actionable insights.`,
+    summarize: `Summarize the following business canvas content into a concise, impactful statement.`,
+    fix: `Fix any grammar, spelling, or punctuation errors in the following text while preserving the meaning.`,
+  };
+
+  const messages = [
+    { role: "system", content: systemPrompts[action] },
+    { role: "user", content: action === "write" ? prompt : content },
+  ];
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview",
+      messages,
+      stream: true,
+    }),
+  });
+
+  return new Response(response.body, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
+});
+```
+
+### Markdown Toolbar Implementation
+
+```typescript
+const insertFormatting = (format: string) => {
+  const textarea = textareaRef.current;
+  if (!textarea) return;
+  
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selected = value.substring(start, end);
+  
+  const formats = {
+    bold: `**${selected || 'bold text'}**`,
+    italic: `*${selected || 'italic text'}*`,
+    heading: `\n## ${selected || 'Heading'}\n`,
+    bullet: `\n- ${selected || 'List item'}\n`,
+    code: `\`${selected || 'code'}\``,
+    link: `[${selected || 'link text'}](url)`,
+  };
+  
+  const newValue = value.substring(0, start) + formats[format] + value.substring(end);
+  onChange(newValue);
+};
+```
+
+### Simple Markdown Renderer
+
+```typescript
+function renderMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+    .replace(/^- (.*)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\n/g, '<br/>');
+}
+```
+
+---
+
+## Database Changes
+None required - the existing `content` column (text type) already supports long-form content.
+
+---
+
+## UI/UX Considerations
+
+1. **Progressive Disclosure**: Quick notes still possible, full editor for detailed content
+2. **Autosave**: Save draft locally to prevent data loss
+3. **Mobile Friendly**: Editor adapts to smaller screens with stacked layout
+4. **AI Loading States**: Show streaming text as AI generates content
+5. **Keyboard Shortcuts**: Power users can format quickly with Ctrl+B, Ctrl+I, etc.
 
 ---
 
 ## Summary
 
-This enhancement transforms the Business Canvas from a standard 9-block BMC into a comprehensive 15-block strategic planning tool, organized into three logical tabs:
-
-1. **Business Model** - Traditional BMC for core business planning
-2. **Strategy** - Competitive analysis and innovation focus  
-3. **Operations & Metrics** - Structure and measurement
+This implementation adds:
+1. **Rich Text Editor** - Markdown editing with formatting toolbar
+2. **Preview Mode** - Live rendering of markdown content
+3. **AI Writing Assistant** - AI-powered content generation and editing
+4. **Full-Screen Dialog** - Dedicated space for long-form content creation
+5. **Seamless Integration** - Works with existing canvas items and database
 
