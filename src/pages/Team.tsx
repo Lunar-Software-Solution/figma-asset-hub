@@ -1,52 +1,65 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { UserPlus, Crown, Shield } from "lucide-react";
+import { useTeam } from "@/hooks/useTeam";
+import { useTeamContext } from "@/contexts/TeamContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  UserPlus,
-  MoreHorizontal,
-  Mail,
-  Shield,
-  Crown,
-} from "lucide-react";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+  InviteMemberDialog,
+  ChangeRoleDialog,
+  RemoveMemberDialog,
+  TeamMemberCard,
+} from "@/components/team";
+import type { TeamMember } from "@/hooks/useTeam";
+import type { Database } from "@/integrations/supabase/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const mockTeamMembers = [
-  { id: 1, name: "John Doe", email: "john@example.com", role: "admin", avatar: null, status: "active" },
-  { id: 2, name: "Sarah Smith", email: "sarah@example.com", role: "editor", avatar: null, status: "active" },
-  { id: 3, name: "Mike Johnson", email: "mike@example.com", role: "editor", avatar: null, status: "active" },
-  { id: 4, name: "Emma Wilson", email: "emma@example.com", role: "viewer", avatar: null, status: "active" },
-  { id: 5, name: "Alex Brown", email: "alex@example.com", role: "viewer", avatar: null, status: "pending" },
-];
-
-const roleColors: Record<string, string> = {
-  admin: "bg-vault-purple/10 text-vault-purple border-vault-purple/20",
-  editor: "bg-vault-blue/10 text-vault-blue border-vault-blue/20",
-  viewer: "bg-secondary text-muted-foreground",
-};
-
-const roleIcons: Record<string, typeof Shield> = {
-  admin: Crown,
-  editor: Shield,
-  viewer: Shield,
-};
+type TeamRole = Database["public"]["Enums"]["team_role"];
 
 export default function Team() {
+  const { user } = useAuth();
+  const { currentTeamId, isAdmin } = useTeamContext();
+  const {
+    members,
+    membersLoading,
+    roleCounts,
+    inviteMember,
+    inviting,
+    updateRole,
+    updatingRole,
+    removeMember,
+    removing,
+  } = useTeam(currentTeamId);
+
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [changeRoleMember, setChangeRoleMember] = useState<TeamMember | null>(null);
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<TeamMember | null>(null);
+
+  const handleInvite = (data: { email: string; role: TeamRole }) => {
+    inviteMember(data, {
+      onSuccess: () => setInviteDialogOpen(false),
+    });
+  };
+
+  const handleChangeRole = (newRole: TeamRole) => {
+    if (changeRoleMember) {
+      updateRole(
+        { memberId: changeRoleMember.id, newRole },
+        { onSuccess: () => setChangeRoleMember(null) }
+      );
+    }
+  };
+
+  const handleRemoveMember = () => {
+    if (removeMemberTarget) {
+      removeMember(removeMemberTarget.id, {
+        onSuccess: () => setRemoveMemberTarget(null),
+      });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -58,10 +71,12 @@ export default function Team() {
               Manage team members and their access permissions.
             </p>
           </div>
-          <Button size="sm" className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Invite Member
-          </Button>
+          {isAdmin && (
+            <Button size="sm" className="gap-2" onClick={() => setInviteDialogOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Invite Member
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
@@ -73,8 +88,12 @@ export default function Team() {
                   <Crown className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">1</p>
-                  <p className="text-sm text-muted-foreground">Admin</p>
+                  {membersLoading ? (
+                    <Skeleton className="h-8 w-8" />
+                  ) : (
+                    <p className="text-2xl font-bold">{roleCounts.admin}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Admin{roleCounts.admin !== 1 ? "s" : ""}</p>
                 </div>
               </div>
             </CardContent>
@@ -82,12 +101,16 @@ export default function Team() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-vault-blue/10 flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-vault-blue" />
+                <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">2</p>
-                  <p className="text-sm text-muted-foreground">Editors</p>
+                  {membersLoading ? (
+                    <Skeleton className="h-8 w-8" />
+                  ) : (
+                    <p className="text-2xl font-bold">{roleCounts.editor}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Editor{roleCounts.editor !== 1 ? "s" : ""}</p>
                 </div>
               </div>
             </CardContent>
@@ -99,105 +122,94 @@ export default function Team() {
                   <Shield className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">2</p>
-                  <p className="text-sm text-muted-foreground">Viewers</p>
+                  {membersLoading ? (
+                    <Skeleton className="h-8 w-8" />
+                  ) : (
+                    <p className="text-2xl font-bold">{roleCounts.viewer}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Viewer{roleCounts.viewer !== 1 ? "s" : ""}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Invite Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Invite Team Members</CardTitle>
-            <CardDescription>
-              Send invitations to add new members to your team.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Enter email addresses..." className="pl-10" />
-              </div>
-              <Select defaultValue="viewer">
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                  <SelectItem value="editor">Editor</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button>Send Invite</Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Team Members List */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Team Members</CardTitle>
             <CardDescription>
-              {mockTeamMembers.length} members in your team
+              {membersLoading ? (
+                <Skeleton className="h-4 w-40" />
+              ) : (
+                `${members.length} member${members.length !== 1 ? "s" : ""} in your team`
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="divide-y divide-border">
-              {mockTeamMembers.map((member) => {
-                const RoleIcon = roleIcons[member.role];
-                return (
-                  <motion.div
+            {membersLoading ? (
+              <div className="divide-y divide-border">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-4 py-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : members.length === 0 ? (
+              <div className="text-center py-8">
+                <UserPlus className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No team members yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {members.map((member) => (
+                  <TeamMemberCard
                     key={member.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-4 py-4 first:pt-0 last:pb-0"
-                  >
-                    {/* Avatar */}
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary">
-                        {member.name.split(" ").map((n) => n[0]).join("")}
-                      </span>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{member.name}</p>
-                        {member.status === "pending" && (
-                          <Badge variant="outline" className="text-xs">Pending</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{member.email}</p>
-                    </div>
-
-                    {/* Role Badge */}
-                    <Badge variant="outline" className={cn("gap-1 capitalize", roleColors[member.role])}>
-                      <RoleIcon className="h-3 w-3" />
-                      {member.role}
-                    </Badge>
-
-                    {/* Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Change Role</DropdownMenuItem>
-                        <DropdownMenuItem>View Activity</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </motion.div>
-                );
-              })}
-            </div>
+                    member={member}
+                    isCurrentUser={member.user_id === user?.id}
+                    isAdmin={isAdmin}
+                    onChangeRole={setChangeRoleMember}
+                    onRemove={setRemoveMemberTarget}
+                  />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Dialogs */}
+        <InviteMemberDialog
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+          onInvite={handleInvite}
+          isLoading={inviting}
+        />
+
+        {changeRoleMember && (
+          <ChangeRoleDialog
+            open={!!changeRoleMember}
+            onOpenChange={(open) => !open && setChangeRoleMember(null)}
+            memberName={changeRoleMember.profile?.full_name || changeRoleMember.profile?.email || "Unknown"}
+            currentRole={changeRoleMember.role}
+            onChangeRole={handleChangeRole}
+            isLoading={updatingRole}
+          />
+        )}
+
+        {removeMemberTarget && (
+          <RemoveMemberDialog
+            open={!!removeMemberTarget}
+            onOpenChange={(open) => !open && setRemoveMemberTarget(null)}
+            memberName={removeMemberTarget.profile?.full_name || removeMemberTarget.profile?.email || "Unknown"}
+            onConfirm={handleRemoveMember}
+            isLoading={removing}
+          />
+        )}
       </div>
     </AppLayout>
   );

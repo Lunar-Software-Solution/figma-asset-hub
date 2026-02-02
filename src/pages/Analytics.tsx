@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,42 +32,28 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { useAnalytics, formatBytes } from "@/hooks/useAnalytics";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const downloadData = [
-  { name: "Mon", downloads: 45 },
-  { name: "Tue", downloads: 62 },
-  { name: "Wed", downloads: 38 },
-  { name: "Thu", downloads: 71 },
-  { name: "Fri", downloads: 89 },
-  { name: "Sat", downloads: 24 },
-  { name: "Sun", downloads: 31 },
-];
+const COLORS = ["hsl(234, 89%, 64%)", "hsl(258, 90%, 66%)", "hsl(142, 71%, 45%)", "hsl(25, 95%, 53%)", "hsl(340, 82%, 52%)", "hsl(200, 95%, 48%)"];
 
-const viewsData = [
-  { name: "Week 1", views: 420 },
-  { name: "Week 2", views: 580 },
-  { name: "Week 3", views: 490 },
-  { name: "Week 4", views: 720 },
-];
-
-const assetTypeData = [
-  { name: "Images", value: 45 },
-  { name: "Icons", value: 25 },
-  { name: "Vectors", value: 15 },
-  { name: "Design Files", value: 15 },
-];
-
-const COLORS = ["hsl(234, 89%, 64%)", "hsl(258, 90%, 66%)", "hsl(142, 71%, 45%)", "hsl(25, 95%, 53%)"];
-
-const topAssets = [
-  { name: "Hero Banner.png", downloads: 234, views: 1.2 },
-  { name: "Logo Package.zip", downloads: 189, views: 890 },
-  { name: "Icon Set v3.svg", downloads: 156, views: 720 },
-  { name: "Brand Colors.fig", downloads: 134, views: 650 },
-  { name: "Social Media Kit", downloads: 98, views: 430 },
-];
+type DateRange = "7d" | "30d" | "90d";
 
 export default function Analytics() {
+  const [dateRange, setDateRange] = useState<DateRange>("7d");
+  const { data, isLoading } = useAnalytics(dateRange);
+
+  const stats = [
+    { label: "Total Downloads", value: data.totals.downloads.toLocaleString(), icon: Download, trend: "+12%", color: "text-blue-600" },
+    { label: "Total Views", value: data.totals.views.toLocaleString(), icon: Eye, trend: "+8%", color: "text-purple-600" },
+    { label: "Shares", value: data.totals.shares.toLocaleString(), icon: Share2, trend: "+24%", color: "text-green-600" },
+    { label: "Storage Used", value: formatBytes(data.totals.storageBytes), icon: HardDrive, trend: "—", color: "text-orange-500" },
+  ];
+
+  const hasData = data.downloads.some(d => d.downloads > 0) || 
+                  data.views.some(v => v.views > 0) || 
+                  data.assetDistribution.length > 0;
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -79,7 +66,7 @@ export default function Analytics() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Select defaultValue="7d">
+            <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -98,23 +85,24 @@ export default function Analytics() {
 
         {/* Stats Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: "Total Downloads", value: "3,284", icon: Download, trend: "+12%", color: "text-vault-blue" },
-            { label: "Total Views", value: "12.4k", icon: Eye, trend: "+8%", color: "text-vault-purple" },
-            { label: "Shares", value: "456", icon: Share2, trend: "+24%", color: "text-vault-green" },
-            { label: "Storage Used", value: "24.5 GB", icon: HardDrive, trend: "64%", color: "text-vault-orange" },
-          ].map((stat) => (
+          {stats.map((stat) => (
             <motion.div key={stat.label} whileHover={{ y: -2 }}>
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                    <span className="text-xs text-success flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      {stat.trend}
-                    </span>
+                    {stat.trend !== "—" && (
+                      <span className="text-xs text-success flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        {stat.trend}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-2xl font-bold mt-2">{stat.value}</p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-20 mt-2" />
+                  ) : (
+                    <p className="text-2xl font-bold mt-2">{stat.value}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                 </CardContent>
               </Card>
@@ -128,25 +116,41 @@ export default function Analytics() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Downloads</CardTitle>
-              <CardDescription>Daily download activity</CardDescription>
+              <CardDescription>
+                {dateRange === "7d" ? "Daily" : "Weekly"} download activity
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={downloadData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar dataKey="downloads" fill="hsl(234, 89%, 64%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Skeleton className="h-48 w-full" />
+                  </div>
+                ) : !hasData ? (
+                  <div className="h-full flex items-center justify-center text-center">
+                    <div>
+                      <Download className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No download data yet</p>
+                      <p className="text-xs text-muted-foreground">Analytics will appear as assets are downloaded</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.downloads}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Bar dataKey="downloads" fill="hsl(234, 89%, 64%)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -155,31 +159,47 @@ export default function Analytics() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Views</CardTitle>
-              <CardDescription>Weekly view trends</CardDescription>
+              <CardDescription>
+                {dateRange === "7d" ? "Daily" : "Weekly"} view trends
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={viewsData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="views"
-                      stroke="hsl(258, 90%, 66%)"
-                      strokeWidth={2}
-                      dot={{ fill: "hsl(258, 90%, 66%)" }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Skeleton className="h-48 w-full" />
+                  </div>
+                ) : !hasData ? (
+                  <div className="h-full flex items-center justify-center text-center">
+                    <div>
+                      <Eye className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No view data yet</p>
+                      <p className="text-xs text-muted-foreground">Analytics will appear as assets are viewed</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={data.views}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="views"
+                        stroke="hsl(258, 90%, 66%)"
+                        strokeWidth={2}
+                        dot={{ fill: "hsl(258, 90%, 66%)" }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -192,42 +212,54 @@ export default function Analytics() {
             </CardHeader>
             <CardContent>
               <div className="h-64 flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={assetTypeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {assetTypeData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex flex-wrap justify-center gap-4 mt-4">
-                {assetTypeData.map((item, index) => (
-                  <div key={item.name} className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: COLORS[index] }}
-                    />
-                    <span className="text-sm text-muted-foreground">{item.name}</span>
+                {isLoading ? (
+                  <Skeleton className="h-40 w-40 rounded-full" />
+                ) : data.assetDistribution.length === 0 ? (
+                  <div className="text-center">
+                    <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No assets yet</p>
+                    <p className="text-xs text-muted-foreground">Upload assets to see distribution</p>
                   </div>
-                ))}
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.assetDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {data.assetDistribution.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
+              {data.assetDistribution.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-4 mt-4">
+                  {data.assetDistribution.map((item, index) => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-sm text-muted-foreground">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -238,30 +270,53 @@ export default function Analytics() {
               <CardDescription>Most popular assets by downloads</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topAssets.map((asset, index) => (
-                  <div key={asset.name} className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-muted-foreground w-4">
-                      {index + 1}
-                    </span>
-                    <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-10 w-10 rounded-lg" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-1" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{asset.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {asset.downloads} downloads • {asset.views}k views
-                      </p>
+                  ))}
+                </div>
+              ) : data.topAssets.length === 0 ? (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No asset activity yet</p>
+                  <p className="text-xs text-muted-foreground">Top assets will appear as they are used</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {data.topAssets.map((asset, index) => (
+                    <div key={asset.id} className="flex items-center gap-4">
+                      <span className="text-sm font-medium text-muted-foreground w-4">
+                        {index + 1}
+                      </span>
+                      <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{asset.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {asset.downloads} downloads • {asset.views} views
+                        </p>
+                      </div>
+                      {data.topAssets[0]?.downloads > 0 && (
+                        <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${(asset.downloads / data.topAssets[0].downloads) * 100}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${(asset.downloads / topAssets[0].downloads) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

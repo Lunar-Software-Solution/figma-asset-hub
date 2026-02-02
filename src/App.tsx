@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BusinessProvider } from "@/contexts/BusinessContext";
 import { BrandProvider } from "@/contexts/BrandContext";
+import { TeamProvider } from "@/contexts/TeamContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 import Dashboard from "./pages/Dashboard";
@@ -27,11 +28,12 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <BusinessProvider>
-        <BrandProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+      <TeamProvider>
+        <BusinessProvider>
+          <BrandProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
           <BrowserRouter>
             <Routes>
             <Route path="/auth" element={<Auth />} />
@@ -123,12 +125,13 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-        </BrandProvider>
-      </BusinessProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+          </BrandProvider>
+        </BusinessProvider>
+      </TeamProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
