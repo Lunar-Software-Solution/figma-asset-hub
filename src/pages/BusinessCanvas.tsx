@@ -6,9 +6,10 @@ import { useBusinessCanvas, CanvasBlockType, CanvasLevel } from "@/hooks/useBusi
 import { useBrand } from "@/contexts/BrandContext";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building, Tag, LayoutGrid } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Building, Tag, LayoutGrid, Target, BarChart3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface BlockConfig {
   type: CanvasBlockType;
@@ -17,7 +18,8 @@ interface BlockConfig {
   color: string;
 }
 
-const blockConfigs: BlockConfig[] = [
+// Original BMC blocks (9 blocks)
+const bmcBlockConfigs: BlockConfig[] = [
   {
     type: "key_partners",
     title: "Key Partners",
@@ -74,10 +76,72 @@ const blockConfigs: BlockConfig[] = [
   },
 ];
 
+// Strategy & Competition blocks (4 blocks)
+const strategyBlockConfigs: BlockConfig[] = [
+  {
+    type: "challenges",
+    title: "Challenges",
+    description: "Problems and obstacles to overcome",
+    color: "#DC2626", // red
+  },
+  {
+    type: "competitors",
+    title: "Competitors",
+    description: "Market competition analysis",
+    color: "#7C3AED", // purple
+  },
+  {
+    type: "innovation",
+    title: "Innovation",
+    description: "New ideas and improvements",
+    color: "#0EA5E9", // sky
+  },
+  {
+    type: "unique_selling_point",
+    title: "Unique Selling Point",
+    description: "What sets you apart",
+    color: "#F59E0B", // amber
+  },
+];
+
+// Operations & Metrics blocks (4 blocks)
+const operationsBlockConfigs: BlockConfig[] = [
+  {
+    type: "corporate_structure",
+    title: "Corporate Structure",
+    description: "Organizational hierarchy",
+    color: "#6366F1", // indigo
+  },
+  {
+    type: "solution",
+    title: "Solution",
+    description: "How you solve customer problems",
+    color: "#10B981", // emerald
+  },
+  {
+    type: "impact",
+    title: "Impact",
+    description: "Measurable outcomes and effects",
+    color: "#8B5CF6", // violet
+  },
+  {
+    type: "success_metrics",
+    title: "Success Metrics",
+    description: "KPIs and success indicators",
+    color: "#F43F5E", // rose
+  },
+];
+
+// Combine all for lookup
+const allBlockConfigs = [...bmcBlockConfigs, ...strategyBlockConfigs, ...operationsBlockConfigs];
+
+type CanvasTab = "business_model" | "strategy" | "operations";
+
 export default function BusinessCanvas() {
   const { currentBrand, isLoading: brandLoading } = useBrand();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const [canvasLevel, setCanvasLevel] = useState<CanvasLevel>("brand");
+  const [activeTab, setActiveTab] = useState<CanvasTab>("business_model");
   
   const {
     isLoading,
@@ -113,9 +177,9 @@ export default function BusinessCanvas() {
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-4 w-96 mt-2" />
           </div>
-          <div className="flex-1 grid grid-cols-5 grid-rows-3 gap-3">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <Skeleton key={i} className="h-full min-h-[150px]" />
+          <div className="flex-1 grid grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-48" />
             ))}
           </div>
         </div>
@@ -146,6 +210,22 @@ export default function BusinessCanvas() {
   const contextColor = canvasLevel === "business"
     ? currentBusiness?.primary_color
     : currentBrand?.primary_color;
+
+  const renderBlock = (block: BlockConfig, className?: string) => (
+    <div key={block.type} className={className}>
+      <CanvasBlock
+        title={block.title}
+        description={block.description}
+        colorAccent={block.color}
+        items={getItemsByBlock(block.type)}
+        onAddClick={() => handleAddClick(block)}
+        onUpdateItem={updateItem}
+        onUpdateItemColor={updateItemColor}
+        onDeleteItem={deleteItem}
+        className="h-full"
+      />
+    </div>
+  );
 
   return (
     <AppLayout>
@@ -198,145 +278,77 @@ export default function BusinessCanvas() {
           </div>
         </div>
 
-        {/* Canvas Grid - Following BMC standard layout */}
-        <div className="flex-1 min-h-0 grid grid-cols-10 grid-rows-6 gap-2">
-          {/* Row 1-4: Main blocks */}
-          {/* Key Partners - spans 2 cols, 4 rows */}
-          <div className="col-span-2 row-span-4">
-            <CanvasBlock
-              title={blockConfigs[0].title}
-              description={blockConfigs[0].description}
-              colorAccent={blockConfigs[0].color}
-              items={getItemsByBlock(blockConfigs[0].type)}
-              onAddClick={() => handleAddClick(blockConfigs[0])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+        {/* Canvas Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CanvasTab)} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="mb-4 w-fit">
+            <TabsTrigger value="business_model" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Business Model
+            </TabsTrigger>
+            <TabsTrigger value="strategy" className="gap-2">
+              <Target className="h-4 w-4" />
+              Strategy
+            </TabsTrigger>
+            <TabsTrigger value="operations" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Operations & Metrics
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Key Activities - spans 2 cols, 2 rows */}
-          <div className="col-span-2 row-span-2">
-            <CanvasBlock
-              title={blockConfigs[1].title}
-              description={blockConfigs[1].description}
-              colorAccent={blockConfigs[1].color}
-              items={getItemsByBlock(blockConfigs[1].type)}
-              onAddClick={() => handleAddClick(blockConfigs[1])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+          {/* Business Model Tab - Original BMC Layout */}
+          <TabsContent value="business_model" className="flex-1 min-h-0 mt-0">
+            <ScrollArea className="h-full">
+              <div className="grid grid-cols-10 grid-rows-6 gap-2 min-h-[600px]">
+                {/* Row 1-4: Main blocks */}
+                {/* Key Partners - spans 2 cols, 4 rows */}
+                {renderBlock(bmcBlockConfigs[0], "col-span-2 row-span-4")}
 
-          {/* Value Propositions - spans 2 cols, 4 rows (center) */}
-          <div className="col-span-2 row-span-4">
-            <CanvasBlock
-              title={blockConfigs[3].title}
-              description={blockConfigs[3].description}
-              colorAccent={blockConfigs[3].color}
-              items={getItemsByBlock(blockConfigs[3].type)}
-              onAddClick={() => handleAddClick(blockConfigs[3])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+                {/* Key Activities - spans 2 cols, 2 rows */}
+                {renderBlock(bmcBlockConfigs[1], "col-span-2 row-span-2")}
 
-          {/* Customer Relationships - spans 2 cols, 2 rows */}
-          <div className="col-span-2 row-span-2">
-            <CanvasBlock
-              title={blockConfigs[4].title}
-              description={blockConfigs[4].description}
-              colorAccent={blockConfigs[4].color}
-              items={getItemsByBlock(blockConfigs[4].type)}
-              onAddClick={() => handleAddClick(blockConfigs[4])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+                {/* Value Propositions - spans 2 cols, 4 rows (center) */}
+                {renderBlock(bmcBlockConfigs[3], "col-span-2 row-span-4")}
 
-          {/* Customer Segments - spans 2 cols, 4 rows */}
-          <div className="col-span-2 row-span-4">
-            <CanvasBlock
-              title={blockConfigs[6].title}
-              description={blockConfigs[6].description}
-              colorAccent={blockConfigs[6].color}
-              items={getItemsByBlock(blockConfigs[6].type)}
-              onAddClick={() => handleAddClick(blockConfigs[6])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+                {/* Customer Relationships - spans 2 cols, 2 rows */}
+                {renderBlock(bmcBlockConfigs[4], "col-span-2 row-span-2")}
 
-          {/* Key Resources - spans 2 cols, 2 rows (below Key Activities) */}
-          <div className="col-span-2 row-span-2 col-start-3 row-start-3">
-            <CanvasBlock
-              title={blockConfigs[2].title}
-              description={blockConfigs[2].description}
-              colorAccent={blockConfigs[2].color}
-              items={getItemsByBlock(blockConfigs[2].type)}
-              onAddClick={() => handleAddClick(blockConfigs[2])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+                {/* Customer Segments - spans 2 cols, 4 rows */}
+                {renderBlock(bmcBlockConfigs[6], "col-span-2 row-span-4")}
 
-          {/* Channels - spans 2 cols, 2 rows (below Customer Relationships) */}
-          <div className="col-span-2 row-span-2 col-start-7 row-start-3">
-            <CanvasBlock
-              title={blockConfigs[5].title}
-              description={blockConfigs[5].description}
-              colorAccent={blockConfigs[5].color}
-              items={getItemsByBlock(blockConfigs[5].type)}
-              onAddClick={() => handleAddClick(blockConfigs[5])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+                {/* Key Resources - spans 2 cols, 2 rows (below Key Activities) */}
+                {renderBlock(bmcBlockConfigs[2], "col-span-2 row-span-2 col-start-3 row-start-3")}
 
-          {/* Row 5-6: Bottom blocks */}
-          {/* Cost Structure - spans 5 cols, 2 rows */}
-          <div className="col-span-5 row-span-2 col-start-1 row-start-5">
-            <CanvasBlock
-              title={blockConfigs[7].title}
-              description={blockConfigs[7].description}
-              colorAccent={blockConfigs[7].color}
-              items={getItemsByBlock(blockConfigs[7].type)}
-              onAddClick={() => handleAddClick(blockConfigs[7])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
+                {/* Channels - spans 2 cols, 2 rows (below Customer Relationships) */}
+                {renderBlock(bmcBlockConfigs[5], "col-span-2 row-span-2 col-start-7 row-start-3")}
 
-          {/* Revenue Streams - spans 5 cols, 2 rows */}
-          <div className="col-span-5 row-span-2 col-start-6 row-start-5">
-            <CanvasBlock
-              title={blockConfigs[8].title}
-              description={blockConfigs[8].description}
-              colorAccent={blockConfigs[8].color}
-              items={getItemsByBlock(blockConfigs[8].type)}
-              onAddClick={() => handleAddClick(blockConfigs[8])}
-              onUpdateItem={updateItem}
-              onUpdateItemColor={updateItemColor}
-              onDeleteItem={deleteItem}
-              className="h-full"
-            />
-          </div>
-        </div>
+                {/* Row 5-6: Bottom blocks */}
+                {/* Cost Structure - spans 5 cols, 2 rows */}
+                {renderBlock(bmcBlockConfigs[7], "col-span-5 row-span-2 col-start-1 row-start-5")}
+
+                {/* Revenue Streams - spans 5 cols, 2 rows */}
+                {renderBlock(bmcBlockConfigs[8], "col-span-5 row-span-2 col-start-6 row-start-5")}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Strategy Tab - 2x2 Grid */}
+          <TabsContent value="strategy" className="flex-1 min-h-0 mt-0">
+            <ScrollArea className="h-full">
+              <div className="grid grid-cols-2 grid-rows-2 gap-4 min-h-[500px]">
+                {strategyBlockConfigs.map((block) => renderBlock(block, "min-h-[240px]"))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Operations & Metrics Tab - 2x2 Grid */}
+          <TabsContent value="operations" className="flex-1 min-h-0 mt-0">
+            <ScrollArea className="h-full">
+              <div className="grid grid-cols-2 grid-rows-2 gap-4 min-h-[500px]">
+                {operationsBlockConfigs.map((block) => renderBlock(block, "min-h-[240px]"))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         {/* Add Item Dialog */}
         <AddCanvasItemDialog

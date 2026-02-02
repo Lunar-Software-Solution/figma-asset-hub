@@ -1158,6 +1158,14 @@ export type Database = {
         | "customer_segments"
         | "cost_structure"
         | "revenue_streams"
+        | "challenges"
+        | "competitors"
+        | "innovation"
+        | "unique_selling_point"
+        | "corporate_structure"
+        | "solution"
+        | "impact"
+        | "success_metrics"
       post_status:
         | "draft"
         | "pending_approval"
@@ -1333,6 +1341,14 @@ export const Constants = {
         "customer_segments",
         "cost_structure",
         "revenue_streams",
+        "challenges",
+        "competitors",
+        "innovation",
+        "unique_selling_point",
+        "corporate_structure",
+        "solution",
+        "impact",
+        "success_metrics",
       ],
       post_status: [
         "draft",
