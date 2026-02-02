@@ -14,6 +14,7 @@ interface CanvasBlockProps {
   onUpdateItem: (id: string, content: string) => void;
   onUpdateItemColor: (id: string, color: string) => void;
   onDeleteItem: (id: string) => void;
+  onEditItem: (item: CanvasItemType) => void;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export function CanvasBlock({
   onUpdateItem,
   onUpdateItemColor,
   onDeleteItem,
+  onEditItem,
   className,
 }: CanvasBlockProps) {
   return (
@@ -90,6 +92,7 @@ export function CanvasBlock({
                 onUpdate={onUpdateItem}
                 onUpdateColor={onUpdateItemColor}
                 onDelete={onDeleteItem}
+                onEdit={() => onEditItem(item)}
               />
             ))
           )}
