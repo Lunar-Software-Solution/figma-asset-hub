@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { mockCollections } from "@/lib/mockData";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export type Collection = Tables<"collections"> & {
@@ -79,6 +80,11 @@ export function useCollections(options: UseCollectionsOptions = {}) {
       const { data, error } = await query;
 
       if (error) throw error;
+      
+      // Use mock data if no real data exists
+      if (!data || data.length === 0) {
+        return mockCollections as Collection[];
+      }
 
       // Get asset counts for each collection
       const collectionsWithCounts = await Promise.all(

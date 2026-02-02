@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { mockAssets } from "@/lib/mockData";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export type Asset = Tables<"assets">;
@@ -44,7 +45,7 @@ export function useAssets(options: UseAssetsOptions = {}) {
         if (caError) throw caError;
 
         const assetIds = collectionAssets?.map((ca) => ca.asset_id) || [];
-        if (assetIds.length === 0) return [];
+        if (assetIds.length === 0) return mockAssets as unknown as Asset[];
 
         query = query.in("id", assetIds);
       }
@@ -87,6 +88,12 @@ export function useAssets(options: UseAssetsOptions = {}) {
       const { data, error } = await query;
 
       if (error) throw error;
+      
+      // Use mock data if no real data exists
+      if (!data || data.length === 0) {
+        return mockAssets as unknown as Asset[];
+      }
+      
       return data as Asset[];
     },
     enabled: !!user,

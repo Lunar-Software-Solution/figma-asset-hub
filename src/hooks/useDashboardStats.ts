@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamContext } from "@/contexts/TeamContext";
+import { mockDashboardStats, mockRecentAssets, mockRecentCampaigns, mockUpcomingPosts, mockActivity } from "@/lib/mockData";
 import type { Database } from "@/integrations/supabase/types";
 
 type CampaignStatus = Database["public"]["Enums"]["campaign_status"];
@@ -157,7 +158,7 @@ export function useDashboardStats() {
   const recentAssetsQuery = useQuery({
     queryKey: ["recent-assets", currentTeamId],
     queryFn: async (): Promise<RecentAsset[]> => {
-      if (!currentTeamId) return [];
+      if (!currentTeamId) return mockRecentAssets;
 
       const { data, error } = await supabase
         .from("assets")
@@ -167,7 +168,13 @@ export function useDashboardStats() {
         .limit(5);
 
       if (error) throw error;
-      return data || [];
+      
+      // Use mock data if no real data
+      if (!data || data.length === 0) {
+        return mockRecentAssets;
+      }
+      
+      return data;
     },
     enabled: !!currentTeamId,
   });
@@ -176,7 +183,7 @@ export function useDashboardStats() {
   const recentCampaignsQuery = useQuery({
     queryKey: ["recent-campaigns", currentTeamId],
     queryFn: async (): Promise<RecentCampaign[]> => {
-      if (!currentTeamId) return [];
+      if (!currentTeamId) return mockRecentCampaigns;
 
       const { data, error } = await supabase
         .from("campaigns")
@@ -186,7 +193,13 @@ export function useDashboardStats() {
         .limit(5);
 
       if (error) throw error;
-      return data || [];
+      
+      // Use mock data if no real data
+      if (!data || data.length === 0) {
+        return mockRecentCampaigns;
+      }
+      
+      return data;
     },
     enabled: !!currentTeamId,
   });
@@ -195,7 +208,7 @@ export function useDashboardStats() {
   const upcomingPostsQuery = useQuery({
     queryKey: ["upcoming-posts", currentTeamId],
     queryFn: async (): Promise<UpcomingPost[]> => {
-      if (!currentTeamId) return [];
+      if (!currentTeamId) return mockUpcomingPosts;
 
       const { data, error } = await supabase
         .from("post_schedules")
@@ -215,6 +228,11 @@ export function useDashboardStats() {
         .limit(5);
 
       if (error) throw error;
+      
+      // Use mock data if no real data
+      if (!data || data.length === 0) {
+        return mockUpcomingPosts;
+      }
 
       // Transform the data to flatten the structure
       return (data || []).map((schedule) => {
@@ -242,7 +260,7 @@ export function useDashboardStats() {
   const activityQuery = useQuery({
     queryKey: ["recent-activity", currentTeamId],
     queryFn: async (): Promise<ActivityItem[]> => {
-      if (!currentTeamId) return [];
+      if (!currentTeamId) return mockActivity as ActivityItem[];
 
       const { data, error } = await supabase
         .from("activity_log")
@@ -252,6 +270,11 @@ export function useDashboardStats() {
         .limit(10);
 
       if (error) throw error;
+      
+      // Use mock data if no real data
+      if (!data || data.length === 0) {
+        return mockActivity as ActivityItem[];
+      }
 
       // Get profiles for activity users
       if (data && data.length > 0) {
