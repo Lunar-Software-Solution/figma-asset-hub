@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
 export type CanvasBlockType =
+  // Original BMC blocks
   | "key_partners"
   | "key_activities"
   | "key_resources"
@@ -14,7 +15,17 @@ export type CanvasBlockType =
   | "channels"
   | "customer_segments"
   | "cost_structure"
-  | "revenue_streams";
+  | "revenue_streams"
+  // Strategic blocks
+  | "challenges"
+  | "competitors"
+  | "innovation"
+  | "unique_selling_point"
+  // Operations & Metrics blocks
+  | "corporate_structure"
+  | "solution"
+  | "impact"
+  | "success_metrics";
 
 export interface CanvasItem {
   id: string;
