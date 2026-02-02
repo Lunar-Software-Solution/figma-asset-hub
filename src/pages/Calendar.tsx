@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { format, parseISO, setHours, setMinutes } from "date-fns";
+import { format, setHours, setMinutes } from "date-fns";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
-import { CreatePostDialog } from "@/components/calendar/CreatePostDialog";
+import { PostComposer } from "@/components/composer";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useCampaignPosts, PostWithSchedules, SocialPlatform } from "@/hooks/useCampaignPosts";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +68,7 @@ export default function Calendar() {
     scheduled_time?: string;
     link_url?: string;
     hashtags?: string[];
+    media_urls?: string[];
   }) => {
     // Create the post
     const newPost = await createPost({
@@ -77,6 +78,7 @@ export default function Calendar() {
       platforms: data.platforms,
       link_url: data.link_url || null,
       hashtags: data.hashtags || null,
+      media_urls: data.media_urls || null,
     });
 
     // If a schedule date is provided, create schedules for each platform
@@ -124,8 +126,8 @@ export default function Calendar() {
           onPostDrop={handlePostDrop}
         />
 
-        {/* Create Post Dialog */}
-        <CreatePostDialog
+        {/* Post Composer */}
+        <PostComposer
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
           campaigns={campaigns}
