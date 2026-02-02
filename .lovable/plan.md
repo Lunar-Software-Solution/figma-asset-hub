@@ -1,230 +1,282 @@
 
+# Plan: Enhance Dashboard with All System Objects
 
-# Plan: Implement Team, Dashboard, and Analytics with Real Data
+## Overview
+Expand the current dashboard to display a comprehensive overview of all entity types in the system: **Businesses**, **Brands**, **Campaigns**, **Collections**, **Assets**, **Scheduled Posts**, **Figma Files**, and **Team Members**. The enhanced dashboard will provide at-a-glance visibility into all aspects of the platform with quick navigation to each section.
 
-## Status: ✅ COMPLETED
-Connect the existing Team, Dashboard, and Analytics pages to real database data, replacing the current mock/hardcoded data. This includes creating necessary hooks for data fetching and implementing functional CRUD operations for team management.
+## Current State
+The dashboard currently shows:
+- 4 stat cards: Assets, Collections, Team Members, Downloads
+- Recent Assets list
+- Activity Feed
 
-## Current State Analysis
-
-### Existing Pages (with mock data):
-- **Dashboard**: Shows stats (assets, collections, team members, downloads), recent assets, and activity feed - all hardcoded
-- **Team**: Shows team members list, role stats, and invite form - all mock data
-- **Analytics**: Shows charts for downloads, views, asset distribution, top assets - all mock data
-
-### Database Tables Available:
-- `teams` - Team information
-- `team_members` - Team membership with roles (admin, editor, viewer)
-- `profiles` - User profile information
-- `activity_log` - Team activity tracking (currently empty)
-- `asset_analytics` - Asset view/download tracking (currently empty)
-- `assets` - Design assets
-- `collections` - Asset collections
-- `businesses` - Business entities
-- `brands` - Brand entities
-- `campaigns` - Marketing campaigns
-
-### Existing Infrastructure:
-- `create_team_with_admin` function for atomic team creation
-- RLS policies for team-based access control
-- `is_team_member`, `get_team_role`, `can_edit_team` helper functions
-
----
+Missing from the dashboard:
+- Businesses overview
+- Brands overview
+- Campaigns overview with status breakdown
+- Scheduled Posts / Calendar preview
+- Figma connection status
 
 ## Implementation Plan
 
-### Phase 1: Create Team Context and Hook
+### Phase 1: Expand Dashboard Stats Hook
 
-#### 1.1 Create `useTeam` Hook
-New file: `src/hooks/useTeam.ts`
+**File: `src/hooks/useDashboardStats.ts`**
 
-Functionality:
-- Fetch current user's team(s) via `team_members` table
-- Fetch team members with profile data
-- Invite new members by email
-- Update member roles
-- Remove team members
-- Track team role counts (admins, editors, viewers)
+Add new data queries:
+- `totalBusinesses` - Count from businesses table
+- `totalBrands` - Count from brands table  
+- `totalCampaigns` - Count from campaigns table
+- `activeCampaigns` - Campaigns with status = 'active'
+- `scheduledPosts` - Count of posts with status = 'scheduled'
+- `upcomingPosts` - Next 5 scheduled posts with dates
+- `recentCampaigns` - Last 5 campaigns created/modified
+- `figmaConnected` - Boolean for Figma connection status
+- `figmaFileCount` - Number of Figma files (if connected)
 
-#### 1.2 Create Team Context
-New file: `src/contexts/TeamContext.tsx`
+New interfaces:
+```typescript
+interface DashboardStats {
+  totalAssets: number;
+  totalCollections: number;
+  teamMembers: number;
+  totalDownloads: number;
+  totalBusinesses: number;
+  totalBrands: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  scheduledPosts: number;
+  figmaConnected: boolean;
+}
 
-Provides:
-- `currentTeam` - The active team
-- `teamMembers` - List of team members with profiles
-- `isAdmin` - Whether current user is team admin
-- `refreshTeam` - Function to refresh team data
+interface RecentCampaign {
+  id: string;
+  name: string;
+  status: CampaignStatus;
+  start_date: string | null;
+  end_date: string | null;
+}
 
----
-
-### Phase 2: Implement Dashboard with Real Data
-
-#### 2.1 Create `useDashboardStats` Hook
-New file: `src/hooks/useDashboardStats.ts`
-
-Fetches:
-- Total assets count (from `assets` table)
-- Total collections count (from `collections` table)
-- Team members count (from `team_members` table)
-- Total downloads count (from `asset_analytics` where action='download')
-- Recent assets (last 5, from `assets` table)
-- Recent activity (last 10, from `activity_log` table)
-
-#### 2.2 Update Dashboard Page
-Modify: `src/pages/Dashboard.tsx`
-
-Changes:
-- Replace hardcoded stats with real database counts
-- Replace mock recent assets with actual recent uploads
-- Replace mock activity feed with real activity log
-- Show personalized greeting using user profile
-- Handle loading and empty states gracefully
-
----
-
-### Phase 3: Implement Team Page with Real Data
-
-#### 3.1 Create Team Member Management Components
-New files:
-- `src/components/team/InviteMemberDialog.tsx` - Dialog for inviting new members
-- `src/components/team/ChangeRoleDialog.tsx` - Dialog for changing member roles
-- `src/components/team/RemoveMemberDialog.tsx` - Confirmation dialog for removal
-- `src/components/team/TeamMemberCard.tsx` - Individual member display
-
-#### 3.2 Update Team Page
-Modify: `src/pages/Team.tsx`
-
-Changes:
-- Use `useTeam` hook for real team data
-- Display actual team members with profiles
-- Implement invite functionality (stores invitation in team_members with pending status)
-- Implement role change (admin only)
-- Implement member removal (admin only)
-- Show real role distribution stats
-- Disable admin-only actions for non-admins
-
----
-
-### Phase 4: Implement Analytics with Real Data
-
-#### 4.1 Create `useAnalytics` Hook
-New file: `src/hooks/useAnalytics.ts`
-
-Fetches:
-- Download counts over time (from `asset_analytics`)
-- View counts over time (from `asset_analytics`)
-- Asset distribution by type (from `assets`)
-- Top assets by downloads/views
-- Storage usage estimate (sum of `file_size` from assets)
-- Filterable by date range (7d, 30d, 90d)
-
-#### 4.2 Log Analytics Events
-Helper function in hook to log analytics events when users:
-- View an asset (action: 'view')
-- Download an asset (action: 'download')
-- Share an asset (action: 'share')
-
-#### 4.3 Update Analytics Page
-Modify: `src/pages/Analytics.tsx`
-
-Changes:
-- Use `useAnalytics` hook for real data
-- Display real download/view charts (or helpful empty state if no data)
-- Show actual asset type distribution
-- Display real top assets based on analytics
-- Calculate and show actual storage usage
-- Maintain existing chart styling and layout
-
----
-
-### Phase 5: Activity Logging Integration
-
-#### 5.1 Create `useActivityLog` Hook
-New file: `src/hooks/useActivityLog.ts`
-
-Provides:
-- `logActivity(action, entityType, entityId, metadata)` function
-- Fetches recent activity for display
-
-#### 5.2 Integrate Activity Logging
-Add activity logging calls to existing operations:
-- Asset upload/update/delete
-- Collection create/update/delete
-- Campaign create/update/delete
-- Team member invite/remove/role change
-
----
-
-## Data Flow Diagram
-
-```text
-+------------------+     +------------------+     +------------------+
-|     Dashboard    |     |      Team        |     |    Analytics     |
-+--------+---------+     +--------+---------+     +--------+---------+
-         |                        |                        |
-         v                        v                        v
-+--------+---------+     +--------+---------+     +--------+---------+
-| useDashboardStats|     |     useTeam      |     |   useAnalytics   |
-+--------+---------+     +--------+---------+     +--------+---------+
-         |                        |                        |
-         +------------+-----------+------------+-----------+
-                      |                        |
-                      v                        v
-              +-------+--------+       +-------+--------+
-              |   TeamContext  |       | useActivityLog |
-              +-------+--------+       +-------+--------+
-                      |                        |
-                      +------------+-----------+
-                                   |
-                                   v
-                           +-------+--------+
-                           |    Supabase    |
-                           |   (Database)   |
-                           +----------------+
+interface UpcomingPost {
+  id: string;
+  title: string | null;
+  content: string;
+  scheduled_for: string;
+  platform: SocialPlatform;
+  campaign_name?: string;
+}
 ```
 
----
+### Phase 2: Redesign Dashboard Layout
+
+**File: `src/pages/Dashboard.tsx`**
+
+New layout structure:
+
+```text
++--------------------------------------------------+
+| Welcome Header + Quick Actions                    |
++--------------------------------------------------+
+| Stats Row 1: Assets | Collections | Campaigns    |
++--------------------------------------------------+
+| Stats Row 2: Businesses | Brands | Posts | Team  |
++--------------------------------------------------+
+| +-------------------+  +----------------------+   |
+| | Recent Campaigns  |  | Upcoming Posts       |   |
+| | (campaign list    |  | (next scheduled      |   |
+| | with status)      |  | posts preview)       |   |
+| +-------------------+  +----------------------+   |
++--------------------------------------------------+
+| +-------------------+  +-------------------+      |
+| | Recent Assets     |  | Activity Feed     |      |
+| | (asset cards)     |  | (team activity)   |      |
+| +-------------------+  +-------------------+      |
++--------------------------------------------------+
+| Figma Status Bar (optional, if connected)        |
++--------------------------------------------------+
+```
+
+### Phase 3: Create Dashboard Components
+
+**New components in `src/components/dashboard/`:**
+
+1. **DashboardStatCard.tsx**
+   - Reusable stat card with icon, value, label, and optional trend
+   - Click-through navigation to relevant page
+   - Loading skeleton state
+
+2. **RecentCampaignsCard.tsx**
+   - Shows 5 most recent campaigns
+   - Displays name, status badge, date range
+   - "View all" link to /campaigns
+
+3. **UpcomingPostsCard.tsx**
+   - Shows next 5 scheduled posts
+   - Displays post preview, platform icon, scheduled time
+   - "View calendar" link to /calendar
+
+4. **FigmaStatusCard.tsx**
+   - Shows connection status
+   - File count if connected
+   - Quick link to Figma Hub
+
+5. **EntityOverviewCard.tsx**
+   - Generic card for Business/Brand quick stats
+   - Shows current selection with color indicator
+   - Links to Business Overview page
+
+### Phase 4: Update Dashboard Page
+
+**Changes to `src/pages/Dashboard.tsx`:**
+
+1. **Enhanced Stats Grid**
+   - 8 stat cards in 2 rows (4 columns each)
+   - Row 1: Assets, Collections, Campaigns (active), Scheduled Posts
+   - Row 2: Businesses, Brands, Team Members, Downloads
+
+2. **Quick Actions Update**
+   - Add "New Campaign" action
+   - Add "Schedule Post" action
+   - Keep existing: Upload Assets, Create Collection, Connect Figma
+
+3. **New Content Sections**
+   - Recent Campaigns card (lg:col-span-1)
+   - Upcoming Posts card (lg:col-span-1)
+   - Recent Assets card (lg:col-span-1) - already exists
+   - Activity Feed card (lg:col-span-1) - already exists
+
+4. **Figma Integration Status**
+   - Small banner/badge showing Figma connection status
+   - Quick action to connect if not connected
+
+### Phase 5: Add Navigation Links
+
+Each dashboard card/stat will link to its respective page:
+- Assets stat -> /assets
+- Collections stat -> /collections  
+- Campaigns stat -> /campaigns
+- Businesses stat -> /business (BusinessOverview)
+- Brands stat -> /business (with brand filter)
+- Team stat -> /team
+- Posts stat -> /calendar
+- Figma -> /figma
+
+## Data Flow
+
+```text
+Dashboard.tsx
+    |
+    +-> useDashboardStats() -- expanded hook
+    |       |
+    |       +-> assets (count)
+    |       +-> collections (count)
+    |       +-> campaigns (count + active count + recent)
+    |       +-> businesses (count)
+    |       +-> brands (count)
+    |       +-> team_members (count)
+    |       +-> campaign_posts + post_schedules (upcoming)
+    |       +-> figma_connections (status)
+    |       +-> activity_log (recent)
+    |       +-> asset_analytics (downloads)
+    |
+    +-> useBusiness() -- current business context
+    +-> useBrand() -- current brand context
+```
 
 ## Files to Create
-- `src/contexts/TeamContext.tsx`
-- `src/hooks/useTeam.ts`
-- `src/hooks/useDashboardStats.ts`
-- `src/hooks/useAnalytics.ts`
-- `src/hooks/useActivityLog.ts`
-- `src/components/team/InviteMemberDialog.tsx`
-- `src/components/team/ChangeRoleDialog.tsx`
-- `src/components/team/RemoveMemberDialog.tsx`
-- `src/components/team/TeamMemberCard.tsx`
+- `src/components/dashboard/DashboardStatCard.tsx`
+- `src/components/dashboard/RecentCampaignsCard.tsx`
+- `src/components/dashboard/UpcomingPostsCard.tsx`
+- `src/components/dashboard/FigmaStatusCard.tsx`
+- `src/components/dashboard/index.ts`
 
 ## Files to Modify
-- `src/App.tsx` - Add TeamProvider
-- `src/pages/Dashboard.tsx` - Connect to real data
-- `src/pages/Team.tsx` - Connect to real data + CRUD
-- `src/pages/Analytics.tsx` - Connect to real data
+- `src/hooks/useDashboardStats.ts` - Add new queries for all entities
+- `src/pages/Dashboard.tsx` - Complete redesign with new layout
 
----
+## Technical Details
 
-## Technical Considerations
+### Database Queries (in useDashboardStats.ts)
 
-### Team Member Invitation Flow
-Since we don't have email invitation infrastructure, the initial implementation will:
-1. Check if user exists in `profiles` by email
-2. If exists, add them directly to `team_members`
-3. If not exists, show message that user must sign up first
+```typescript
+// Parallel fetch for all counts
+const [
+  assetsRes,
+  collectionsRes,
+  campaignsRes,
+  businessesRes,
+  brandsRes,
+  membersRes,
+  analyticsRes,
+  scheduledPostsRes,
+  figmaRes,
+] = await Promise.all([
+  supabase.from("assets").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
+  supabase.from("collections").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
+  supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
+  supabase.from("businesses").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
+  supabase.from("brands").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
+  supabase.from("team_members").select("id", { count: "exact", head: true }).eq("team_id", currentTeamId),
+  supabase.from("asset_analytics").select("id", { count: "exact", head: true }).eq("action", "download"),
+  supabase.from("campaign_posts").select("id", { count: "exact", head: true })
+    .eq("team_id", currentTeamId).eq("status", "scheduled"),
+  supabase.from("figma_connections").select("id").eq("team_id", currentTeamId).maybeSingle(),
+]);
 
-### Empty State Handling
-When there's no data (new teams, no analytics yet):
-- Dashboard: Show encouraging onboarding prompts
-- Analytics: Show helpful message explaining data will appear as assets are used
-- Team: Always shows at least the current user (admin)
+// Fetch upcoming posts with schedule info
+const { data: upcomingPosts } = await supabase
+  .from("post_schedules")
+  .select(`
+    id,
+    scheduled_for,
+    platform,
+    post:campaign_posts(id, title, content, campaign:campaigns(name))
+  `)
+  .gte("scheduled_for", new Date().toISOString())
+  .order("scheduled_for", { ascending: true })
+  .limit(5);
 
-### Role-Based UI
-- Only team admins can invite, change roles, or remove members
-- UI elements will be disabled/hidden for non-admins
-- Server-side enforcement via existing RLS policies
+// Fetch recent campaigns
+const { data: recentCampaigns } = await supabase
+  .from("campaigns")
+  .select("id, name, status, start_date, end_date")
+  .eq("team_id", currentTeamId)
+  .order("updated_at", { ascending: false })
+  .limit(5);
+```
 
-### Performance
-- Use React Query for caching and automatic refetching
-- Aggregate queries where possible to minimize database calls
-- Add appropriate indexes if needed (already in place for most queries)
+### UI Component Example
 
+```tsx
+// Stat card with navigation
+<Link to="/campaigns">
+  <Card className="hover-lift cursor-pointer">
+    <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        Active Campaigns
+      </CardTitle>
+      <Megaphone className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{stats.activeCampaigns}</div>
+      <p className="text-xs text-muted-foreground">
+        of {stats.totalCampaigns} total campaigns
+      </p>
+    </CardContent>
+  </Card>
+</Link>
+```
+
+## Empty State Handling
+
+For new users with no data:
+- Show encouraging onboarding prompts
+- "Get started" CTA buttons for each empty section
+- Hide sections that have no relevance (e.g., hide Figma status if not connected)
+
+## Performance Considerations
+
+- Use parallel queries with `Promise.all` for all counts
+- React Query caching to prevent redundant fetches
+- Skeleton loading states for each section independently
+- Only fetch detailed data (recent items) after counts load
