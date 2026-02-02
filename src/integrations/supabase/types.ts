@@ -447,6 +447,163 @@ export type Database = {
           },
         ]
       }
+      campaign_posts: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          created_by: string
+          hashtags: string[] | null
+          id: string
+          link_url: string | null
+          media_urls: string[] | null
+          mentions: string[] | null
+          notes: string | null
+          platform_variants: Json | null
+          platforms: Database["public"]["Enums"]["social_platform"][]
+          status: Database["public"]["Enums"]["post_status"]
+          team_id: string
+          title: string | null
+          updated_at: string
+          utm_params: Json | null
+        }
+        Insert: {
+          campaign_id: string
+          content: string
+          created_at?: string
+          created_by: string
+          hashtags?: string[] | null
+          id?: string
+          link_url?: string | null
+          media_urls?: string[] | null
+          mentions?: string[] | null
+          notes?: string | null
+          platform_variants?: Json | null
+          platforms?: Database["public"]["Enums"]["social_platform"][]
+          status?: Database["public"]["Enums"]["post_status"]
+          team_id: string
+          title?: string | null
+          updated_at?: string
+          utm_params?: Json | null
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          hashtags?: string[] | null
+          id?: string
+          link_url?: string | null
+          media_urls?: string[] | null
+          mentions?: string[] | null
+          notes?: string | null
+          platform_variants?: Json | null
+          platforms?: Database["public"]["Enums"]["social_platform"][]
+          status?: Database["public"]["Enums"]["post_status"]
+          team_id?: string
+          title?: string | null
+          updated_at?: string
+          utm_params?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_posts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_posts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          brand_id: string | null
+          budget: number | null
+          business_id: string | null
+          cover_image_url: string | null
+          created_at: string
+          created_by: string
+          currency: string | null
+          description: string | null
+          end_date: string | null
+          goals: Json | null
+          id: string
+          name: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          tags: string[] | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          budget?: number | null
+          business_id?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string | null
+          description?: string | null
+          end_date?: string | null
+          goals?: Json | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          tags?: string[] | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          budget?: number | null
+          business_id?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string | null
+          description?: string | null
+          end_date?: string | null
+          goals?: Json | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          tags?: string[] | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_assets: {
         Row: {
           added_at: string
@@ -677,6 +834,53 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_schedules: {
+        Row: {
+          created_at: string
+          external_post_id: string | null
+          id: string
+          platform: Database["public"]["Enums"]["social_platform"]
+          post_id: string
+          publish_error: string | null
+          published_at: string | null
+          scheduled_for: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_post_id?: string | null
+          id?: string
+          platform: Database["public"]["Enums"]["social_platform"]
+          post_id: string
+          publish_error?: string | null
+          published_at?: string | null
+          scheduled_for: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_post_id?: string | null
+          id?: string
+          platform?: Database["public"]["Enums"]["social_platform"]
+          post_id?: string
+          publish_error?: string | null
+          published_at?: string | null
+          scheduled_for?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_schedules_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_posts"
             referencedColumns: ["id"]
           },
         ]
@@ -916,6 +1120,14 @@ export type Database = {
         | "design_file"
         | "brand_asset"
         | "other"
+      campaign_status:
+        | "draft"
+        | "in_review"
+        | "approved"
+        | "active"
+        | "paused"
+        | "completed"
+        | "archived"
       canvas_block_type:
         | "key_partners"
         | "key_activities"
@@ -926,6 +1138,24 @@ export type Database = {
         | "customer_segments"
         | "cost_structure"
         | "revenue_streams"
+      post_status:
+        | "draft"
+        | "pending_approval"
+        | "approved"
+        | "scheduled"
+        | "publishing"
+        | "published"
+        | "failed"
+      social_platform:
+        | "facebook"
+        | "instagram"
+        | "twitter"
+        | "linkedin"
+        | "tiktok"
+        | "pinterest"
+        | "youtube"
+        | "threads"
+        | "bluesky"
       team_role: "viewer" | "editor" | "admin"
     }
     CompositeTypes: {
@@ -1064,6 +1294,15 @@ export const Constants = {
         "brand_asset",
         "other",
       ],
+      campaign_status: [
+        "draft",
+        "in_review",
+        "approved",
+        "active",
+        "paused",
+        "completed",
+        "archived",
+      ],
       canvas_block_type: [
         "key_partners",
         "key_activities",
@@ -1074,6 +1313,26 @@ export const Constants = {
         "customer_segments",
         "cost_structure",
         "revenue_streams",
+      ],
+      post_status: [
+        "draft",
+        "pending_approval",
+        "approved",
+        "scheduled",
+        "publishing",
+        "published",
+        "failed",
+      ],
+      social_platform: [
+        "facebook",
+        "instagram",
+        "twitter",
+        "linkedin",
+        "tiktok",
+        "pinterest",
+        "youtube",
+        "threads",
+        "bluesky",
       ],
       team_role: ["viewer", "editor", "admin"],
     },
