@@ -535,6 +535,7 @@ export type Database = {
           end_date: string | null
           goals: Json | null
           id: string
+          initiative_id: string | null
           name: string
           start_date: string | null
           status: Database["public"]["Enums"]["campaign_status"]
@@ -554,6 +555,7 @@ export type Database = {
           end_date?: string | null
           goals?: Json | null
           id?: string
+          initiative_id?: string | null
           name: string
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -573,6 +575,7 @@ export type Database = {
           end_date?: string | null
           goals?: Json | null
           id?: string
+          initiative_id?: string | null
           name?: string
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -593,6 +596,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_initiative_id_fkey"
+            columns: ["initiative_id"]
+            isOneToOne: false
+            referencedRelation: "strategic_initiatives"
             referencedColumns: ["id"]
           },
           {
@@ -983,6 +993,94 @@ export type Database = {
           },
         ]
       }
+      strategic_initiatives: {
+        Row: {
+          action_plan: string | null
+          brand_id: string | null
+          business_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          priority: Database["public"]["Enums"]["initiative_priority"]
+          resources_needed: string | null
+          risks: string | null
+          stakeholders: Json | null
+          status: Database["public"]["Enums"]["initiative_status"]
+          strategic_goals: Json | null
+          success_metrics: Json | null
+          team_id: string
+          timeline_end: string | null
+          timeline_start: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_plan?: string | null
+          brand_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          priority?: Database["public"]["Enums"]["initiative_priority"]
+          resources_needed?: string | null
+          risks?: string | null
+          stakeholders?: Json | null
+          status?: Database["public"]["Enums"]["initiative_status"]
+          strategic_goals?: Json | null
+          success_metrics?: Json | null
+          team_id: string
+          timeline_end?: string | null
+          timeline_start?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_plan?: string | null
+          brand_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          priority?: Database["public"]["Enums"]["initiative_priority"]
+          resources_needed?: string | null
+          risks?: string | null
+          stakeholders?: Json | null
+          status?: Database["public"]["Enums"]["initiative_status"]
+          strategic_goals?: Json | null
+          success_metrics?: Json | null
+          team_id?: string
+          timeline_end?: string | null
+          timeline_start?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategic_initiatives_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategic_initiatives_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategic_initiatives_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           color: string | null
@@ -1166,6 +1264,13 @@ export type Database = {
         | "solution"
         | "impact"
         | "success_metrics"
+      initiative_priority: "low" | "medium" | "high" | "critical"
+      initiative_status:
+        | "planning"
+        | "in_progress"
+        | "on_hold"
+        | "completed"
+        | "cancelled"
       post_status:
         | "draft"
         | "pending_approval"
@@ -1349,6 +1454,14 @@ export const Constants = {
         "solution",
         "impact",
         "success_metrics",
+      ],
+      initiative_priority: ["low", "medium", "high", "critical"],
+      initiative_status: [
+        "planning",
+        "in_progress",
+        "on_hold",
+        "completed",
+        "cancelled",
       ],
       post_status: [
         "draft",

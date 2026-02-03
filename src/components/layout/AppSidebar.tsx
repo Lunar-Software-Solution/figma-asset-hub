@@ -14,6 +14,7 @@ import {
   Building2,
   Megaphone,
   CalendarDays,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -23,7 +24,7 @@ import { BusinessSwitcher } from "@/components/business/BusinessSwitcher";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Building2, label: "Business Overview", path: "/business" },
-  { icon: Megaphone, label: "Campaigns", path: "/campaigns" },
+  { icon: Target, label: "Strategic Initiatives", path: "/initiatives" },
   { icon: CalendarDays, label: "Calendar", path: "/calendar" },
   { icon: Images, label: "Asset Library", path: "/assets" },
   { icon: FolderOpen, label: "Collections", path: "/collections" },
