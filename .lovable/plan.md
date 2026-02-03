@@ -1,305 +1,359 @@
 
 
-# Plan: Add Long-Form Rich Text Editor with AI Capabilities to Canvas Notes
+# Plan: Add Strategic Initiatives as Top-Level Entity with Campaigns Nested Under
 
 ## Overview
-Enhance the Business Canvas notes to support long-form markdown content with a rich text editor, plus AI-powered writing and editing features. Currently, notes are simple text fields with basic inline editing. This upgrade will provide a full-screen editor dialog with markdown support, formatting toolbar, and AI assistance.
+Create a new **Strategic Initiatives** module at the same hierarchy level as the current Campaigns page, then restructure Campaigns to be children of Strategic Initiatives. This creates a clear planning hierarchy:
 
-## Current State
-- **CanvasItem.tsx**: Simple sticky note with inline textarea editing
-- **AddCanvasItemDialog.tsx**: Basic dialog with plain Textarea component
-- **Content Storage**: Plain text in `business_canvas_items.content` field (text type - already supports long content)
-- **No Rich Text**: No markdown rendering or formatting toolbar exists
+```text
+Business -> Strategic Initiative -> Campaign -> Posts
+```
 
-## Proposed Solution
+## Current vs. Proposed Structure
 
-### User Experience Flow
+**Current Navigation:**
+- Dashboard
+- Business Overview
+- **Campaigns** (standalone)
+- Calendar
+- Asset Library
+- Collections
+- Figma Hub
+- Business Canvas
+- Team
+- Analytics
 
-1. **Click "Add your first note"** -> Opens expanded editor dialog
-2. **Click existing note** -> Opens editor dialog with current content
-3. **Editor Features**:
-   - Full-screen dialog with markdown editor
-   - Formatting toolbar (bold, italic, lists, headings, links)
-   - Live markdown preview panel
-   - AI assistant panel for content generation and editing
-4. **AI Capabilities**:
-   - "Write with AI" - Generate content based on prompts
-   - "Improve" - Enhance existing text
-   - "Expand" - Add more detail to content
-   - "Summarize" - Condense lengthy content
-   - "Fix Grammar" - Correct writing issues
+**Proposed Navigation:**
+- Dashboard
+- Business Overview
+- **Strategic Initiatives** (new - replaces Campaigns in nav)
+- Calendar
+- Asset Library
+- Collections
+- Figma Hub
+- Business Canvas
+- Team
+- Analytics
+
+When you click into a Strategic Initiative, you see its Campaigns within that detail view.
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Create Rich Text Editor Component
+### Phase 1: Database Schema
 
-**New File: `src/components/canvas/RichTextEditor.tsx`**
+**Create `strategic_initiatives` table:**
 
-A reusable markdown editor component with:
-- Textarea for markdown input with formatting toolbar
-- Preview pane showing rendered markdown
-- Toggle between edit/preview/split view modes
-- Keyboard shortcuts for common formatting (Ctrl+B, Ctrl+I, etc.)
+```sql
+CREATE TABLE public.strategic_initiatives (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  status initiative_status NOT NULL DEFAULT 'planning',
+  priority initiative_priority NOT NULL DEFAULT 'medium',
+  
+  -- Planning fields
+  strategic_goals JSONB DEFAULT '[]'::jsonb,
+  action_plan TEXT,
+  timeline_start DATE,
+  timeline_end DATE,
+  resources_needed TEXT,
+  risks TEXT,
+  stakeholders JSONB DEFAULT '[]'::jsonb,
+  success_metrics JSONB DEFAULT '[]'::jsonb,
+  
+  -- Hierarchy
+  business_id UUID REFERENCES businesses(id) ON DELETE SET NULL,
+  brand_id UUID REFERENCES brands(id) ON DELETE SET NULL,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  
+  -- Metadata
+  created_by UUID NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Create status enum
+CREATE TYPE public.initiative_status AS ENUM (
+  'planning',
+  'in_progress', 
+  'on_hold',
+  'completed',
+  'cancelled'
+);
+
+-- Create priority enum
+CREATE TYPE public.initiative_priority AS ENUM (
+  'low',
+  'medium',
+  'high',
+  'critical'
+);
+
+-- Add initiative_id to campaigns table
+ALTER TABLE public.campaigns 
+ADD COLUMN initiative_id UUID REFERENCES strategic_initiatives(id) ON DELETE SET NULL;
+
+-- RLS Policies
+ALTER TABLE public.strategic_initiatives ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Team members can view initiatives"
+  ON public.strategic_initiatives FOR SELECT
+  USING (is_team_member(auth.uid(), team_id));
+
+CREATE POLICY "Editors can create initiatives"
+  ON public.strategic_initiatives FOR INSERT
+  WITH CHECK (can_edit_team(auth.uid(), team_id));
+
+CREATE POLICY "Editors can update initiatives"
+  ON public.strategic_initiatives FOR UPDATE
+  USING (can_edit_team(auth.uid(), team_id));
+
+CREATE POLICY "Editors can delete initiatives"
+  ON public.strategic_initiatives FOR DELETE
+  USING (can_edit_team(auth.uid(), team_id));
+
+-- Index for performance
+CREATE INDEX idx_initiatives_team_id ON public.strategic_initiatives(team_id);
+CREATE INDEX idx_initiatives_business_id ON public.strategic_initiatives(business_id);
+CREATE INDEX idx_campaigns_initiative_id ON public.campaigns(initiative_id);
+```
+
+### Phase 2: TypeScript Types & Hook
+
+**New file: `src/hooks/useStrategicInitiatives.ts`**
 
 ```typescript
-interface RichTextEditorProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
+export type StrategicInitiative = Tables<"strategic_initiatives">;
+export type InitiativeStatus = Enums<"initiative_status">;
+export type InitiativePriority = Enums<"initiative_priority">;
+
+export const INITIATIVE_STATUS_CONFIG = {
+  planning: { label: "Planning", color: "bg-blue-500/20 text-blue-700" },
+  in_progress: { label: "In Progress", color: "bg-green-500/20 text-green-700" },
+  on_hold: { label: "On Hold", color: "bg-yellow-500/20 text-yellow-700" },
+  completed: { label: "Completed", color: "bg-purple-500/20 text-purple-700" },
+  cancelled: { label: "Cancelled", color: "bg-gray-500/20 text-gray-700" },
+};
+
+export function useStrategicInitiatives() {
+  // Fetch, create, update, delete initiatives
+  // Filter by business/brand context
 }
 ```
 
-Toolbar buttons:
-- **Bold** (B) - Wraps selection with `**`
-- **Italic** (I) - Wraps selection with `*`
-- **Heading** (H) - Adds `## ` prefix
-- **Bullet List** - Adds `- ` prefix
-- **Numbered List** - Adds `1. ` prefix
-- **Link** - Wraps with `[text](url)`
-- **Code** - Wraps with backticks
+### Phase 3: UI Components
 
-### Phase 2: Create AI Writing Assistant
-
-**New File: `src/components/canvas/AIWritingAssistant.tsx`**
-
-Collapsible AI panel with:
-- Text input for prompts
-- Quick action buttons (Improve, Expand, Summarize, Fix Grammar)
-- Streaming response display
-- "Apply" button to insert AI-generated content
-
-**New File: `supabase/functions/canvas-ai/index.ts`**
-
-Edge function to handle AI requests using Lovable AI:
-- System prompt tailored for business canvas content
-- Supports different action types (write, improve, expand, summarize, fix)
-- Streams response back to client
-
-### Phase 3: Create Full Canvas Note Editor Dialog
-
-**New File: `src/components/canvas/CanvasNoteEditorDialog.tsx`**
-
-Full-screen editor dialog combining:
-- Rich text editor with toolbar
-- Markdown preview panel (toggle or split view)
-- AI assistant panel (collapsible sidebar)
-- Note color selector
-- Auto-save indicator
-- Cancel/Save actions
-
-```typescript
-interface CanvasNoteEditorDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  initialContent?: string;
-  initialColor?: string;
-  blockLabel: string;
-  onSave: (content: string, color: string) => void;
-  mode: "create" | "edit";
-}
-```
-
-Layout structure:
-```text
-+------------------------------------------------------------------+
-| Block Name                              [Preview] [Split]  [X]   |
-+------------------------------------------------------------------+
-| Toolbar: B | I | H | List | Code | Link          | Color Picker  |
-+------------------------------------------------------------------+
-| +------------------------+  +------------------------------+     |
-| | Markdown Editor        |  | Preview                      |     |
-| | (textarea)             |  | (rendered markdown)          |     |
-| |                        |  |                              |     |
-| |                        |  |                              |     |
-| +------------------------+  +------------------------------+     |
-+------------------------------------------------------------------+
-| AI Assistant                                          [Collapse] |
-| +--------------------------------------------------------------+ |
-| | [Write with AI...                                    ] [Go]  | |
-| | [Improve] [Expand] [Summarize] [Fix Grammar]                 | |
-| +--------------------------------------------------------------+ |
-+------------------------------------------------------------------+
-|                                        [Cancel]  [Save Note]     |
-+------------------------------------------------------------------+
-```
-
-### Phase 4: Update Existing Components
-
-**Modify: `src/components/canvas/CanvasItem.tsx`**
-
-- Keep sticky note appearance for display
-- Show markdown preview (truncated) instead of raw text
-- Double-click opens full editor dialog
-- Single click no longer enables inline editing (opens dialog instead)
-
-**Modify: `src/components/canvas/CanvasBlock.tsx`**
-
-- Pass new `onEditItem` handler
-- Update click behavior for notes
-
-**Modify: `src/components/canvas/AddCanvasItemDialog.tsx`**
-
-- Replace with redirect to new CanvasNoteEditorDialog
-- Or keep for quick notes, add "Expand Editor" button
-
-**Modify: `src/pages/BusinessCanvas.tsx`**
-
-- Add state for editor dialog
-- Add `editItem` handler for opening existing notes
-- Connect editor dialog to canvas operations
-
-### Phase 5: Markdown Rendering
-
-**Add dependency or simple implementation:**
-
-Option A: Use `marked` or `react-markdown` library for rendering
-Option B: Simple regex-based rendering for basic markdown (bold, italic, lists, headings)
-
-For the preview pane, render markdown to HTML safely.
-
----
-
-## Files to Create
+**New Files to Create:**
 
 | File | Purpose |
 |------|---------|
-| `src/components/canvas/RichTextEditor.tsx` | Markdown editor with formatting toolbar |
-| `src/components/canvas/AIWritingAssistant.tsx` | AI panel with quick actions |
-| `src/components/canvas/CanvasNoteEditorDialog.tsx` | Full editor dialog |
-| `src/components/canvas/MarkdownPreview.tsx` | Markdown to HTML renderer |
-| `supabase/functions/canvas-ai/index.ts` | Edge function for AI requests |
+| `src/pages/StrategicInitiatives.tsx` | Main listing page |
+| `src/pages/InitiativeDetail.tsx` | Detail view with campaigns |
+| `src/components/initiatives/InitiativeCard.tsx` | Card component for list |
+| `src/components/initiatives/InitiativeFilters.tsx` | Search & filters |
+| `src/components/initiatives/InitiativeList.tsx` | Grid/list view |
+| `src/components/initiatives/CreateInitiativeDialog.tsx` | Create form |
+| `src/components/initiatives/EditInitiativeDialog.tsx` | Edit form |
+| `src/components/initiatives/DeleteInitiativeDialog.tsx` | Delete confirmation |
+| `src/components/initiatives/InitiativeStatusBadge.tsx` | Status display |
+| `src/components/initiatives/InitiativePriorityBadge.tsx` | Priority display |
 
-## Files to Modify
+**Initiative Detail Page Layout:**
 
+```text
++------------------------------------------------------------------+
+| <- Back to Initiatives                                            |
++------------------------------------------------------------------+
+| [Initiative Name]                          [Edit] [Delete]        |
+| Status: In Progress | Priority: High | Brand: BraxCloud          |
++------------------------------------------------------------------+
+| [Overview] [Campaigns] [Timeline] [Resources]  <- Tabs            |
++------------------------------------------------------------------+
+
+Overview Tab:
++------------------------------------------------------------------+
+| Strategic Goals        | Action Plan                              |
+| - Goal 1               | 1. Step one...                          |
+| - Goal 2               | 2. Step two...                          |
++------------------------------------------------------------------+
+| Risks & Mitigation     | Success Metrics                         |
+| - Risk 1...            | - KPI 1: Target                         |
++------------------------------------------------------------------+
+
+Campaigns Tab:
++------------------------------------------------------------------+
+| [+ New Campaign]                           [Search] [Filter]      |
++------------------------------------------------------------------+
+| Campaign Card | Campaign Card | Campaign Card                     |
+| Campaign Card | Campaign Card | Campaign Card                     |
++------------------------------------------------------------------+
+```
+
+### Phase 4: Navigation Updates
+
+**Update `src/components/layout/AppSidebar.tsx`:**
+
+```typescript
+import { Target } from "lucide-react"; // or Rocket, Flag
+
+const navItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Building2, label: "Business Overview", path: "/business" },
+  { icon: Target, label: "Strategic Initiatives", path: "/initiatives" }, // NEW
+  { icon: CalendarDays, label: "Calendar", path: "/calendar" },
+  // ... rest unchanged
+];
+// Remove Campaigns from top-level nav - it's now accessed through Initiatives
+```
+
+### Phase 5: Route Updates
+
+**Update `src/App.tsx`:**
+
+```typescript
+import StrategicInitiatives from "./pages/StrategicInitiatives";
+import InitiativeDetail from "./pages/InitiativeDetail";
+
+// Add routes:
+<Route path="/initiatives" element={<ProtectedRoute><StrategicInitiatives /></ProtectedRoute>} />
+<Route path="/initiatives/:id" element={<ProtectedRoute><InitiativeDetail /></ProtectedRoute>} />
+// Keep /campaigns for backward compatibility but redirect or filter by initiative
+```
+
+### Phase 6: Update Campaigns
+
+**Modify Campaign Dialog & Hook:**
+
+1. Add `initiative_id` field to `CreateCampaignDialog.tsx`
+2. Update `useCampaigns.ts` to accept optional `initiativeId` filter
+3. Update campaign cards to show parent initiative
+
+### Phase 7: Mock Data
+
+**Add to `src/lib/mockData.ts`:**
+
+```typescript
+export const mockStrategicInitiatives = [
+  {
+    id: "mock-initiative-1",
+    name: "Q1 2026 Market Expansion",
+    description: "Expand BraxTech presence into European and Asian markets",
+    status: "in_progress",
+    priority: "high",
+    strategic_goals: [
+      { goal: "Establish EU headquarters", target: "Q1 2026" },
+      { goal: "Launch localized products", target: "Q2 2026" },
+    ],
+    action_plan: "1. Legal entity setup\n2. Hire regional teams\n3. Partner recruitment",
+    timeline_start: "2026-01-01",
+    timeline_end: "2026-06-30",
+    resources_needed: "$2M budget, 15 new hires",
+    risks: "Regulatory compliance, currency fluctuation",
+    stakeholders: [
+      { name: "Sarah Chen", role: "Project Lead" },
+      { name: "Marcus Weber", role: "EU Operations" },
+    ],
+    success_metrics: [
+      { metric: "EU Revenue", target: "$5M", current: "$1.2M" },
+      { metric: "Partner Count", target: "25", current: "8" },
+    ],
+    business_id: "mock-business-1",
+    brand_id: null,
+    team_id: "mock-team-1",
+    created_by: "mock-user-1",
+    created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: "mock-initiative-2",
+    name: "AI Product Portfolio Launch",
+    description: "Launch comprehensive AI/ML product suite under BraxAI brand",
+    status: "planning",
+    priority: "critical",
+    strategic_goals: [
+      { goal: "Launch 3 AI products", target: "2026" },
+      { goal: "Achieve $10M ARR", target: "End of 2026" },
+    ],
+    // ... more fields
+  },
+];
+
+// Update mockCampaigns to include initiative_id
+export const mockCampaigns = [
+  {
+    ...existingCampaign,
+    initiative_id: "mock-initiative-1", // Link to initiative
+  },
+];
+```
+
+---
+
+## Files Summary
+
+### New Files to Create
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/[timestamp]_add_strategic_initiatives.sql` | Database schema |
+| `src/hooks/useStrategicInitiatives.ts` | Data hook |
+| `src/pages/StrategicInitiatives.tsx` | List page |
+| `src/pages/InitiativeDetail.tsx` | Detail page with campaigns |
+| `src/components/initiatives/InitiativeCard.tsx` | Card component |
+| `src/components/initiatives/InitiativeFilters.tsx` | Filters |
+| `src/components/initiatives/InitiativeList.tsx` | List/grid |
+| `src/components/initiatives/CreateInitiativeDialog.tsx` | Create dialog |
+| `src/components/initiatives/EditInitiativeDialog.tsx` | Edit dialog |
+| `src/components/initiatives/DeleteInitiativeDialog.tsx` | Delete dialog |
+| `src/components/initiatives/InitiativeStatusBadge.tsx` | Status badge |
+| `src/components/initiatives/InitiativePriorityBadge.tsx` | Priority badge |
+| `src/components/initiatives/index.ts` | Barrel export |
+
+### Files to Modify
 | File | Changes |
 |------|---------|
-| `src/components/canvas/CanvasItem.tsx` | Click opens editor, show markdown preview |
-| `src/components/canvas/CanvasBlock.tsx` | Add onEditItem prop |
-| `src/pages/BusinessCanvas.tsx` | Add editor dialog state and handlers |
-| `supabase/config.toml` | Add canvas-ai function |
+| `src/App.tsx` | Add initiative routes |
+| `src/components/layout/AppSidebar.tsx` | Update nav (replace Campaigns with Initiatives) |
+| `src/hooks/useCampaigns.ts` | Add `initiativeId` filter |
+| `src/components/campaigns/CreateCampaignDialog.tsx` | Add initiative selector |
+| `src/components/campaigns/CampaignCard.tsx` | Show parent initiative |
+| `src/lib/mockData.ts` | Add mock initiatives, update campaigns |
+| `src/pages/Dashboard.tsx` | Update stats to show initiatives |
 
 ---
 
-## Technical Details
+## Data Flow
 
-### Edge Function: canvas-ai
-
-```typescript
-// supabase/functions/canvas-ai/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  const { action, content, prompt, blockType } = await req.json();
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-  const systemPrompts = {
-    write: `You are a business strategist helping create content for a "${blockType}" section of a Business Model Canvas. Write clear, actionable content based on the user's request.`,
-    improve: `Improve the following business canvas content. Make it clearer, more professional, and more actionable while preserving the core message.`,
-    expand: `Expand on the following business canvas content with more detail, examples, and actionable insights.`,
-    summarize: `Summarize the following business canvas content into a concise, impactful statement.`,
-    fix: `Fix any grammar, spelling, or punctuation errors in the following text while preserving the meaning.`,
-  };
-
-  const messages = [
-    { role: "system", content: systemPrompts[action] },
-    { role: "user", content: action === "write" ? prompt : content },
-  ];
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages,
-      stream: true,
-    }),
-  });
-
-  return new Response(response.body, {
-    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-  });
-});
+```text
+User clicks "Strategic Initiatives" in sidebar
+        |
+        v
+StrategicInitiatives.tsx loads initiatives via useStrategicInitiatives()
+        |
+        v
+User clicks an Initiative card
+        |
+        v
+InitiativeDetail.tsx loads with initiative ID from URL
+        |
+        v
+Campaigns tab shows campaigns filtered by initiative_id
+        |
+        v
+User can create new campaign linked to this initiative
 ```
-
-### Markdown Toolbar Implementation
-
-```typescript
-const insertFormatting = (format: string) => {
-  const textarea = textareaRef.current;
-  if (!textarea) return;
-  
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const selected = value.substring(start, end);
-  
-  const formats = {
-    bold: `**${selected || 'bold text'}**`,
-    italic: `*${selected || 'italic text'}*`,
-    heading: `\n## ${selected || 'Heading'}\n`,
-    bullet: `\n- ${selected || 'List item'}\n`,
-    code: `\`${selected || 'code'}\``,
-    link: `[${selected || 'link text'}](url)`,
-  };
-  
-  const newValue = value.substring(0, start) + formats[format] + value.substring(end);
-  onChange(newValue);
-};
-```
-
-### Simple Markdown Renderer
-
-```typescript
-function renderMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^- (.*)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\n/g, '<br/>');
-}
-```
-
----
-
-## Database Changes
-None required - the existing `content` column (text type) already supports long-form content.
-
----
-
-## UI/UX Considerations
-
-1. **Progressive Disclosure**: Quick notes still possible, full editor for detailed content
-2. **Autosave**: Save draft locally to prevent data loss
-3. **Mobile Friendly**: Editor adapts to smaller screens with stacked layout
-4. **AI Loading States**: Show streaming text as AI generates content
-5. **Keyboard Shortcuts**: Power users can format quickly with Ctrl+B, Ctrl+I, etc.
 
 ---
 
 ## Summary
 
-This implementation adds:
-1. **Rich Text Editor** - Markdown editing with formatting toolbar
-2. **Preview Mode** - Live rendering of markdown content
-3. **AI Writing Assistant** - AI-powered content generation and editing
-4. **Full-Screen Dialog** - Dedicated space for long-form content creation
-5. **Seamless Integration** - Works with existing canvas items and database
+This restructuring:
+
+1. Creates **Strategic Initiatives** as a first-class entity
+2. Nests **Campaigns** under initiatives for better organization
+3. Maintains all existing campaign functionality
+4. Adds planning fields (goals, risks, metrics) directly to initiatives
+5. Updates navigation to reflect new hierarchy
+6. Provides a detail view with tabs for managing initiative components
 
