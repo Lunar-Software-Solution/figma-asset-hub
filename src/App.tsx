@@ -21,6 +21,8 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Campaigns from "./pages/Campaigns";
 import Calendar from "./pages/Calendar";
+import StrategicInitiatives from "./pages/StrategicInitiatives";
+import InitiativeDetail from "./pages/InitiativeDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -114,6 +116,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Campaigns />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/initiatives"
+              element={
+                <ProtectedRoute>
+                  <StrategicInitiatives />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/initiatives/:id"
+              element={
+                <ProtectedRoute>
+                  <InitiativeDetail />
                 </ProtectedRoute>
               }
             />
